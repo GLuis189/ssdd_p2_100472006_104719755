@@ -3,6 +3,7 @@ import argparse
 import socket
 import threading
 import os
+import sys
 
 class client :
 
@@ -422,7 +423,9 @@ class client :
         if (not client.parseArguments(argv)) :
             client.usage()
             return
-
+        print(sys.argv)
+        _server = sys.argv[2]
+        _port = sys.argv[4]
         #  Write code here
         client.shell()
         print("+++ FINISHED +++")
