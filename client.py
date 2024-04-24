@@ -34,9 +34,9 @@ class client :
     def register(user):
         try:
             client._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            print(f"Connecting to {client._server}:{client._port}")
             client._socket.connect((client._server, client._port))
-            client._socket.sendall(f"REGISTER {user}\0".encode())
+            client._socket.sendall(f"REGISTER\0".encode())
+            client._socket.sendall(f"{user}\0".encode())
             response = client._socket.recv(1024).decode()
             if response == '0':
                 print("c > REGISTER OK")

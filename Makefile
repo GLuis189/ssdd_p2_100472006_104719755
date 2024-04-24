@@ -15,7 +15,7 @@ all: $(BIN_FILES)
 .PHONY: all
 
 
-servidor: servidor.o
+servidor: servidor.o lines.o
 	$(CC) $(LDFLAGS) $^ $(LDLIBS) -o $@
 
 # Regla para compilar archivos fuente a objetos

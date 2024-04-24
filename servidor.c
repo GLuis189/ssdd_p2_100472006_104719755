@@ -11,6 +11,60 @@
 #include <netinet/in.h>
 #include "lines.h"
 
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+int busy = true;
+pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
+
+void register_user(char* user)
+{
+    FILE *f;
+    f = fopen("users.txt", "a");
+    if (f == NULL)
+    {
+        printf("Error opening file!\n");
+        exit(1);
+    }
+    fprintf(f, "%s\n", user);
+    fclose(f);
+    return;
+}
+
+int tratar_peticion(void *sockfd)
+{
+    int *sockfd_int = (int *)sockfd;
+    int err;
+    int s_local;
+    
+    char op[256];
+
+    pthread_mutex_lock(&mutex);
+    s_local = (*sockfd_int);
+    busy = false;
+    pthread_cond_signal(&cond);
+    pthread_mutex_unlock(&mutex);
+
+    err = recv(s_local, op, 256, 0); 
+    if (err == -1)
+    {
+        printf("Error in reception op\n");
+        close(s_local);
+        return NULL;
+    }
+    if (op == "REGISTER\0"){
+        char user[256];
+        
+        err = recv(s_local, user, 256, 0);
+        if (err == -1)
+        {
+            printf("Error in reception user\n");
+            close(s_local);
+            return NULL;
+        }
+        register_user(user);
+    }
+    
+}
+
 int main(int argc, char *argv[])
 {
     if (argc != 3)
@@ -64,12 +118,11 @@ int main(int argc, char *argv[])
 
     size = sizeof(client_addr);
 
+    printf("s> init server <local IP>: <%d>\n", atoi(argv[2]));
+
     // Aceptar la conexión en sí
     while (1)
     {
-        printf("Esperando conexión... \n");
-        fflush(stdout);
-
         // Nuevo socket
         sc = accept(sd, (struct sockaddr *)&client_addr, (socklen_t *)&size);
         if (sc == -1)
@@ -77,9 +130,15 @@ int main(int argc, char *argv[])
             printf("Error en accept\n");
             return -1;
         }
-        // pthread_create(&thid, &attr, tratar_peticion, (void *)&sc);
+        pthread_create(&thid, &attr, tratar_peticion, (void *)&sc);
+        printf("s> new connection from %s\n", inet_ntoa(client_addr.sin_addr));
 
-        printf("conexión aceptada de IP: %s   Puerto: %d\n", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
+        while (busy)
+        {
+            pthread_cond_wait(&cond, &mutex);
+            busy = true;
+            pthread_mutex_unlock(&mutex);
+        }
     }
     close(sd);
     return 0;
