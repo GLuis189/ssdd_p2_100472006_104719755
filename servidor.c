@@ -15,19 +15,38 @@ pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 int busy = true;
 pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
 
-void register_user(char* user)
+void register_user(int s_local, char* user)
 {
+    printf("s> OPERATION REGISTER FROM %s\n",user);
     FILE *f;
-    f = fopen("users.txt", "a");
+    f = fopen("users.txt", "r");
     if (f == NULL)
     {
         printf("Error opening file!\n");
         exit(1);
     }
+    // Comprueba si el usuario ya está registrado
+    char line[256];
+    while (fgets(line, sizeof(line), f)) {
+        // Elimina el salto de línea al final de la línea
+        line[strcspn(line, "\n")] = 0;
+        if (strcmp(line, user) == 0) {
+            // El usuario ya está registrado, envía '1' al cliente
+            send(s_local, "1", 1, 0);
+            fclose(f);
+            return;
+        }
+    }
+    fclose(f);
+
+    // Registra al nuevo usuario y envía '0' al cliente
+    f = fopen("users.txt", "a");
     fprintf(f, "%s\n", user);
+    send(s_local, "0", 1, 0);
     fclose(f);
     return;
 }
+
 
 int tratar_peticion(void *sockfd)
 {
@@ -35,35 +54,39 @@ int tratar_peticion(void *sockfd)
     int err;
     int s_local;
     
-    char op[256];
+    char buffer[256];
 
     pthread_mutex_lock(&mutex);
     s_local = (*sockfd_int);
     busy = false;
     pthread_cond_signal(&cond);
     pthread_mutex_unlock(&mutex);
-
-    err = recv(s_local, op, 256, 0); 
+    
+    err = recv(s_local, buffer, 256, 0); 
     if (err == -1)
     {
-        printf("Error in reception op\n");
+        printf("Error in reception\n");
         close(s_local);
         return NULL;
     }
-    if (op == "REGISTER\0"){
-        char user[256];
-        
-        err = recv(s_local, user, 256, 0);
-        if (err == -1)
-        {
-            printf("Error in reception user\n");
-            close(s_local);
-            return NULL;
+
+    char *op = strtok(buffer, " ");
+    char *user = strtok(NULL, " ");
+
+    if (op && strcmp(op, "REGISTER") == 0){ //REGISTER
+        if (user) {
+            register_user(s_local, user);
+        } else {
+            printf("No user provided\n");
         }
-        register_user(user);
     }
-    
+    // Aquí puedes agregar más condiciones para otros comandos
+    // else if (op && strcmp(op, "OTRO_COMANDO") == 0) {
+    //     ...
+    // }
 }
+
+
 
 int main(int argc, char *argv[])
 {
@@ -130,6 +153,7 @@ int main(int argc, char *argv[])
             printf("Error en accept\n");
             return -1;
         }
+
         pthread_create(&thid, &attr, tratar_peticion, (void *)&sc);
         printf("s> new connection from %s\n", inet_ntoa(client_addr.sin_addr));
 

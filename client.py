@@ -35,8 +35,8 @@ class client :
         try:
             client._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             client._socket.connect((client._server, client._port))
-            client._socket.sendall(f"REGISTER\0".encode())
-            client._socket.sendall(f"{user}\0".encode())
+            message = f"REGISTER {user}\0"
+            client._socket.sendall(message.encode())
             response = client._socket.recv(1024).decode()
             if response == '0':
                 print("c > REGISTER OK")
@@ -316,7 +316,7 @@ class client :
 
         while (True) :
             try :
-                command = input("c> ")
+                command = input("c > ")
                 line = command.split(" ")
                 if (len(line) > 0):
 
