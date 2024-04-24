@@ -3,6 +3,7 @@ import argparse
 import socket
 import threading
 import os
+import sys
 
 class client :
 
@@ -33,6 +34,7 @@ class client :
     def register(user):
         try:
             client._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            print(f"Connecting to {client._server}:{client._port}")
             client._socket.connect((client._server, client._port))
             client._socket.sendall(f"REGISTER {user}\0".encode())
             response = client._socket.recv(1024).decode()
@@ -410,8 +412,8 @@ class client :
             parser.error("Error: Port must be in the range 1024 <= port <= 65535");
             return False;
         
-        _server = args.s
-        _port = args.p
+        client._server = args.s
+        client._port = args.p
 
         return True
 
