@@ -47,6 +47,47 @@ void register_user(int s_local, char* user)
     return;
 }
 
+void unregister_user(int s_local, char* user)
+{
+    printf("s> OPERATION UNREGISTER FROM %s\n",user);
+    FILE *f;
+    f = fopen("users.txt", "r");
+    if (f == NULL)
+    {
+        printf("Error opening file!\n");
+        exit(1);
+    }
+    // Comprueba si el usuario ya está registrado, si es así lo borra
+    char line[256];
+    while (fgets(line, sizeof(line), f)) {
+        // Elimina el salto de línea al final de la línea
+        line[strcspn(line, "\n")] = 0;
+        if (strcmp(line, user) == 0) {
+            // El usuario ya está registrado, envía '0' al cliente
+            send(s_local, "0", 1, 0);
+            fclose(f);
+            // Borra el usuario
+            FILE *f2;
+            f2 = fopen("users.txt", "r");
+            FILE *f3;
+            f3 = fopen("users2.txt", "w");
+            while (fgets(line, sizeof(line), f2)) {
+                // Elimina el salto de línea al final de la línea
+                line[strcspn(line, "\n")] = 0;
+                if (strcmp(line, user) != 0) {
+                    fprintf(f3, "%s\n", line);
+                }
+            }
+            fclose(f2);
+            fclose(f3);
+            remove("users.txt");
+            rename("users2.txt", "users.txt");
+            return;
+        }
+    }
+    
+}
+
 
 int tratar_peticion(void *sockfd)
 {
@@ -72,7 +113,7 @@ int tratar_peticion(void *sockfd)
 
     char *op = strtok(buffer, " ");
     char *user = strtok(NULL, " ");
-
+    printf("ENTRA\n");
     if (op && strcmp(op, "REGISTER") == 0){ //REGISTER
         if (user) {
             register_user(s_local, user);
@@ -80,10 +121,19 @@ int tratar_peticion(void *sockfd)
             printf("No user provided\n");
         }
     }
-    // Aquí puedes agregar más condiciones para otros comandos
-    // else if (op && strcmp(op, "OTRO_COMANDO") == 0) {
-    //     ...
-    // }
+    else if (op && strcmp(op, "UNREGISTER") == 0){ //UNREGISTER
+        if (user) {
+            unregister_user(s_local, user);
+        } else {
+            printf("No user provided\n");
+        }
+    }
+    else {
+        printf("Invalid operation\n");
+    }
+
+    busy = true;
+    return NULL;
 }
 
 

@@ -33,8 +33,9 @@ class client :
     @staticmethod
     def register(user):
         try:
-            client._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            client._socket.connect((client._server, client._port))
+            if client._socket is None:
+                client._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                client._socket.connect((client._server, client._port))
             message = f"REGISTER {user}\0"
             client._socket.sendall(message.encode())
             response = client._socket.recv(1024).decode()
@@ -50,16 +51,18 @@ class client :
         except Exception as e:
             print(f"Error: {str(e)}")
             return client.RC.ERROR
-        finally:
-            client._socket.close()
 
     @staticmethod
     def unregister(user):
         try:
-            client._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            client._socket.connect((client._server, client._port))
+            if client._socket is None:
+                client._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                client._socket.connect((client._server, client._port))
             client._socket.sendall(f"UNREGISTER {user}\0".encode())
+            print("HOLA\n")
+            client._socket.settimeout(5)
             response = client._socket.recv(1024).decode()
+            print("HOLA2\n")
             if response == '0':
                 print("c > UNREGISTER OK")
                 return client.RC.OK
@@ -72,8 +75,7 @@ class client :
         except Exception as e:
             print(f"Error: {str(e)}")
             return client.RC.ERROR
-        finally:
-            client._socket.close()
+
 
 
     @staticmethod
@@ -308,37 +310,33 @@ class client :
         client._server = args.s
         client._port = args.p
         return True
+    
+    @staticmethod
+    def quit():
+        if client._socket is not None:
+            client._socket.close()
+            client._socket = None
 
     # **
     # * @brief Command interpreter for the client. It calls the protocol functions.
     @staticmethod
     def shell():
-
-        while (True) :
-            try :
+        while True:
+            try:
                 command = input("c > ")
                 line = command.split(" ")
-                if (len(line) > 0):
-
+                if len(line) > 0:
                     line[0] = line[0].upper()
-
-                    if (line[0]=="REGISTER") :
-                        if (len(line) == 2) :
+                    if line[0] == "REGISTER":
+                        if len(line) == 2:
                             client.register(line[1])
-                        else :
+                        else:
                             print("Syntax error. Usage: REGISTER <userName>")
-
-                    elif(line[0]=="UNREGISTER") :
-                        if (len(line) == 2) :
+                    elif line[0] == "UNREGISTER":
+                        if len(line) == 2:
                             client.unregister(line[1])
-                        else :
+                        else:
                             print("Syntax error. Usage: UNREGISTER <userName>")
-
-                    elif(line[0]=="CONNECT") :
-                        if (len(line) == 2) :
-                            client.connect(line[1])
-                        else :
-                            print("Syntax error. Usage: CONNECT <userName>")
                     
                     elif(line[0]=="PUBLISH") :
                         if (len(line) >= 3) :
@@ -378,12 +376,13 @@ class client :
                         else :
                             print("Syntax error. Usage: GET_FILE <userName> <remote_fileName> <local_fileName>")
 
-                    elif(line[0]=="QUIT") :
-                        if (len(line) == 1) :
+                    elif line[0] == "QUIT":
+                        if len(line) == 1:
+                            client.quit()
                             break
-                        else :
+                        else:
                             print("Syntax error. Use: QUIT")
-                    else :
+                    else:
                         print("Error: command " + line[0] + " not valid.")
             except Exception as e:
                 print("Exception: " + str(e))
@@ -427,6 +426,7 @@ class client :
         #  Write code here
         client.shell()
         print("+++ FINISHED +++")
+
     
 
 if __name__=="__main__":
