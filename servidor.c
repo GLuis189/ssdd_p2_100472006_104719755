@@ -87,6 +87,34 @@ void unregister_user(int s_local, char* user)
     }
     
 }
+void connect_user(int s_local, char* user)
+{
+    printf("s> OPERATION CONNECT FROM %s\n",user);
+    FILE *f;
+    f = fopen("users.txt", "r");
+    if (f == NULL)
+    {
+        printf("Error opening file!\n");
+        exit(1);
+    }
+    // Comprueba si el usuario ya está registrado
+    char line[256];
+    while (fgets(line, sizeof(line), f)) {
+        // Elimina el salto de línea al final de la línea
+        line[strcspn(line, "\n")] = 0;
+        if (strcmp(line, user) == 0) {
+            // El usuario ya está registrado, envía '0' al cliente
+            send(s_local, "0", 1, 0);
+            fclose(f);
+            return;
+        }
+    }
+    fclose(f);
+    // El usuario no está registrado, envía '1' al cliente
+    send(s_local, "1", 1, 0);
+    return;
+}
+
 
 
 int tratar_peticion(void *sockfd)
@@ -113,7 +141,6 @@ int tratar_peticion(void *sockfd)
 
     char *op = strtok(buffer, " ");
     char *user = strtok(NULL, " ");
-    printf("ENTRA\n");
     if (op && strcmp(op, "REGISTER") == 0){ //REGISTER
         if (user) {
             register_user(s_local, user);
@@ -124,6 +151,14 @@ int tratar_peticion(void *sockfd)
     else if (op && strcmp(op, "UNREGISTER") == 0){ //UNREGISTER
         if (user) {
             unregister_user(s_local, user);
+        } else {
+            printf("No user provided\n");
+        }
+    }
+    else if (op && strcmp(op, "CONNECT") == 0){ //CONNECT
+        if (user) {
+            printf("ENTRA\n");
+            connect_user(s_local, user);
         } else {
             printf("No user provided\n");
         }
