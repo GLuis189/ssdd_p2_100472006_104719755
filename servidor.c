@@ -44,6 +44,7 @@ void register_user(int s_local, char* user)
     fprintf(f, "%s\n", user);
     send(s_local, "0", 1, 0);
     fclose(f);
+    close(s_local);
     return;
 }
 
@@ -82,6 +83,7 @@ void unregister_user(int s_local, char* user)
             fclose(f3);
             remove("users.txt");
             rename("users2.txt", "users.txt");
+            close(s_local);
             return;
         }
     }
@@ -112,6 +114,7 @@ void connect_user(int s_local, char* user)
     fclose(f);
     // El usuario no está registrado, envía '1' al cliente
     send(s_local, "1", 1, 0);
+    close(s_local);
     return;
 }
 
