@@ -117,7 +117,7 @@ void connect_user(int s_local, char* user)
 
 
 
-int tratar_peticion(void *sockfd)
+void tratar_peticion(void *sockfd)
 {
     int *sockfd_int = (int *)sockfd;
     int err;
@@ -167,8 +167,8 @@ int tratar_peticion(void *sockfd)
         printf("Invalid operation\n");
     }
 
-    busy = true;
-    return NULL;
+    close(s_local);
+    pthread_exit(NULL);
 }
 
 

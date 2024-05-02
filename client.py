@@ -46,6 +46,8 @@ class client :
         except Exception as e:
             print(f"Error: {str(e)}")
             return client.RC.ERROR
+        finally:
+            client._socket.close()
     @staticmethod
     def unregister(user):
         try:
@@ -67,6 +69,7 @@ class client :
             return client.RC.ERROR
         finally:
             client._socket.close()
+            
     @staticmethod
     def connect(user):
         try:
