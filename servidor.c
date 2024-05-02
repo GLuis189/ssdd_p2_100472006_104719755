@@ -89,7 +89,7 @@ void unregister_user(int s_local, char* user)
     }
     
 }
-void connect_user(int s_local, char* user)
+void connect_user(int s_local, char* user, char* port)
 {
     printf("s> OPERATION CONNECT FROM %s\n",user);
     FILE *f;
@@ -105,13 +105,95 @@ void connect_user(int s_local, char* user)
         // Elimina el salto de línea al final de la línea
         line[strcspn(line, "\n")] = 0;
         if (strcmp(line, user) == 0) {
-            // El usuario ya está registrado, envía '0' al cliente
+            fclose(f);
+
+            // Comprueba si el usuario ya está conectado
+            f = fopen("connected_users.txt", "r");
+            if (f != NULL) {
+                while (fgets(line, sizeof(line), f)) {
+                    line[strcspn(line, "\n")] = 0;
+                    if (strcmp(line, user) == 0) {
+                        // El usuario ya está conectado, envía '2' al cliente
+                        send(s_local, "2", 1, 0);
+                        fclose(f);
+                        return;
+                    }
+                }
+                fclose(f);
+            }
+
+            // Conecta al usuario y envía '0' al cliente
+            f = fopen("connected_users.txt", "a");
+            fprintf(f, "%s\n", user);
             send(s_local, "0", 1, 0);
             fclose(f);
             return;
         }
     }
     fclose(f);
+
+    // El usuario no está registrado, envía '1' al cliente
+    send(s_local, "1", 1, 0);
+    close(s_local);
+    return;
+}
+
+void disconnect_user(int s_local, char* user)
+{
+    printf("s> OPERATION DISCONNECT FROM %s\n",user);
+    FILE *f;
+    f = fopen("users.txt", "r");
+    if (f == NULL)
+    {
+        printf("Error opening file!\n");
+        exit(1);
+    }
+    // Comprueba si el usuario ya está registrado
+    char line[256];
+    while (fgets(line, sizeof(line), f)) {
+        // Elimina el salto de línea al final de la línea
+        line[strcspn(line, "\n")] = 0;
+        if (strcmp(line, user) == 0) {
+            fclose(f);
+
+            // Comprueba si el usuario ya está conectado
+            f = fopen("connected_users.txt", "r");
+            if (f != NULL) {
+                while (fgets(line, sizeof(line), f)) {
+                    line[strcspn(line, "\n")] = 0;
+                    if (strcmp(line, user) == 0) {
+                        // El usuario ya está conectado, envía '0' al cliente
+                        send(s_local, "0", 1, 0);
+                        fclose(f);
+                        // Desconecta al usuario
+                        FILE *f2;
+                        f2 = fopen("connected_users.txt", "r");
+                        FILE *f3;
+                        f3 = fopen("connected_users2.txt", "w");
+                        while (fgets(line, sizeof(line), f2)) {
+                            // Elimina el salto de línea al final de la línea
+                            line[strcspn(line, "\n")] = 0;
+                            if (strcmp(line, user) != 0) {
+                                fprintf(f3, "%s\n", line);
+                            }
+                        }
+                        fclose(f2);
+                        fclose(f3);
+                        remove("connected_users.txt");
+                        rename("connected_users2.txt", "connected_users.txt");
+                        return;
+                    }
+                }
+                fclose(f);
+            }
+
+            // El usuario no está conectado, envía '2' al cliente
+            send(s_local, "2", 1, 0);
+            return;
+        }
+    }
+    fclose(f);
+
     // El usuario no está registrado, envía '1' al cliente
     send(s_local, "1", 1, 0);
     close(s_local);
@@ -144,6 +226,7 @@ void tratar_peticion(void *sockfd)
 
     char *op = strtok(buffer, " ");
     char *user = strtok(NULL, " ");
+    char *port = strtok(NULL, " ");
     if (op && strcmp(op, "REGISTER") == 0){ //REGISTER
         if (user) {
             register_user(s_local, user);
@@ -160,8 +243,14 @@ void tratar_peticion(void *sockfd)
     }
     else if (op && strcmp(op, "CONNECT") == 0){ //CONNECT
         if (user) {
-            printf("ENTRA\n");
-            connect_user(s_local, user);
+            connect_user(s_local, user, port);
+        } else {
+            printf("No user provided\n");
+        }
+    }
+    else if (op && strcmp(op, "DISCONNECT") == 0){ //DISCONNECT
+        if (user) {
+            disconnect_user(s_local, user);
         } else {
             printf("No user provided\n");
         }
@@ -252,6 +341,7 @@ int main(int argc, char *argv[])
             pthread_mutex_unlock(&mutex);
         }
     }
+    
     close(sd);
     return 0;
 }
