@@ -138,6 +138,94 @@ void connect_user(int s_local, char* user, char* port)
     return;
 }
 
+void publish_content(int s_local, char* filename, char* description)
+{
+    printf("s> OPERATION PUBLISH\n");
+    FILE *f;
+    f = fopen("connected_users.txt", "r");
+    if (f == NULL)
+    {
+        printf("Error opening file!\n");
+        exit(1);
+    }
+    // Obtiene el usuario conectado
+    char user[256];
+    fgets(user, sizeof(user), f);
+    user[strcspn(user, "\n")] = 0;
+    fclose(f);
+
+    // Comprueba si el usuario ya está registrado
+    f = fopen("users.txt", "r");
+    if (f != NULL) {
+        char line[256];
+        bool user_exists = false;
+        while (fgets(line, sizeof(line), f)) {
+            line[strcspn(line, "\n")] = 0;
+            if (strcmp(line, user) == 0) {
+                user_exists = true;
+                break;
+            }
+        }
+        fclose(f);
+        if (!user_exists) {
+            // El usuario no está registrado, envía '1' al cliente
+            send(s_local, "1", 1, 0);
+            close(s_local);
+            return;
+        }
+    }
+
+    // Comprueba si el usuario ya está conectado
+    f = fopen("connected_users.txt", "r");
+    if (f != NULL) {
+        char line[256];
+        bool user_connected = false;
+        while (fgets(line, sizeof(line), f)) {
+            line[strcspn(line, "\n")] = 0;
+            if (strcmp(line, user) == 0) {
+                user_connected = true;
+                break;
+            }
+        }
+        fclose(f);
+        if (!user_connected) {
+            // El usuario no está conectado, envía '2' al cliente
+            send(s_local, "2", 1, 0);
+            close(s_local);
+            return;
+        }
+    }
+
+    // Comprueba si el contenido ya está publicado
+    f = fopen("published_contents.txt", "r");
+    if (f != NULL) {
+        char line[256];
+        while (fgets(line, sizeof(line), f)) {
+            line[strcspn(line, "\n")] = 0;
+            char* published_filename = strtok(line, " ");
+            if (strcmp(published_filename, filename) == 0) {
+                // El contenido ya está publicado, envía '3' al cliente
+                send(s_local, "3", 1, 0);
+                fclose(f);
+                close(s_local);
+                return;
+            }
+        }
+        fclose(f);
+    }
+
+    // Publica el contenido y envía '0' al cliente
+    f = fopen("published_contents.txt", "a");
+    fprintf(f, "%s %s %s\n", user, filename, description);
+    send(s_local, "0", 1, 0);
+    fclose(f);
+    close(s_local);
+    return;
+}
+
+
+
+
 void disconnect_user(int s_local, char* user)
 {
     printf("s> OPERATION DISCONNECT FROM %s\n",user);
@@ -226,7 +314,8 @@ void tratar_peticion(void *sockfd)
 
     char *op = strtok(buffer, " ");
     char *user = strtok(NULL, " ");
-    char *port = strtok(NULL, " ");
+    char *filename = strtok(NULL, " ");
+    char *description = strtok(NULL, " ");
     if (op && strcmp(op, "REGISTER") == 0){ //REGISTER
         if (user) {
             register_user(s_local, user);
@@ -243,7 +332,7 @@ void tratar_peticion(void *sockfd)
     }
     else if (op && strcmp(op, "CONNECT") == 0){ //CONNECT
         if (user) {
-            connect_user(s_local, user, port);
+            connect_user(s_local, user, filename);
         } else {
             printf("No user provided\n");
         }
@@ -255,13 +344,23 @@ void tratar_peticion(void *sockfd)
             printf("No user provided\n");
         }
     }
+    else if (op && strcmp(op, "PUBLISH") == 0){ //PUBLISH
+        if (filename && description) {
+            publish_content(s_local, filename, description);
+        } else {
+            printf("No filename or description provided\n");
+        }
+    }
     else {
         printf("Invalid operation\n");
     }
 
     close(s_local);
+
+    close(s_local);
     pthread_exit(NULL);
 }
+
 
 
 
