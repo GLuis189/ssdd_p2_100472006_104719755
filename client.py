@@ -18,6 +18,7 @@ class client :
     _socket = None
     _listen_socket = None
     _listen_thread = None
+    _user = None
     # ******************** METHODS *******************
     @staticmethod
     def handle_requests():
@@ -73,6 +74,7 @@ class client :
     @staticmethod
     def connect(user):
         try:
+            client._user = user
             client._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             client._socket.connect((client._server, client._port))
             client._listen_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -110,6 +112,7 @@ class client :
             if response == '0':
                 print("c > DISCONNECT OK")
                 client._listen_thread.join()  # stop the listening thread
+                print("c > STOPPED LISTENING")
                 client._listen_socket.close()  # close the listening socket
                 return client.RC.OK
             elif response == '1':
@@ -131,7 +134,7 @@ class client :
         try:
             client._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             client._socket.connect((client._server, client._port))
-            client._socket.sendall(f"PUBLISH {fileName} {description}\0".encode())
+            client._socket.sendall(f"PUBLISH {client._user} {fileName} {description}\0".encode())
             response = client._socket.recv(1024).decode()
             if response == '0':
                 print("c > PUBLISH OK")
@@ -158,7 +161,7 @@ class client :
         try:
             client._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             client._socket.connect((client._server, client._port))
-            client._socket.sendall(f"DELETE {fileName}\0".encode())
+            client._socket.sendall(f"DELETE {client._user} {fileName}\0".encode())
             response = client._socket.recv(1024).decode()
             if response == '0':
                 print("c > DELETE OK")
@@ -185,14 +188,18 @@ class client :
         try:
             client._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             client._socket.connect((client._server, client._port))
-            client._socket.sendall("LIST_USERS\0".encode())
+            client._socket.sendall(f"LIST_USERS {client._user}\0".encode())
             response = client._socket.recv(1024).decode()
             if response == '0':
-                num_users = int(client._socket.recv(1024).decode())
+                response = client._socket.recv(1024).decode()
+                num_users = int(response.split('\x00')[0])
                 print("c > LIST_USERS OK")
                 for _ in range(num_users):
-                    user_info = client._socket.recv(1024).decode().split()
-                    print(f"{user_info[0]} {user_info[1]} {user_info[2]}")
+                    user_info = client._socket.recv(1024)
+                    user_info = user_info.decode().split('\0')
+                    print(user_info)
+                    print("llega")
+                    print(f"{user_info[0]} localhost {user_info[1]}\n")
                 return client.RC.OK
             elif response == '1':
                 print("c > LIST_USERS FAIL, USER DOES NOT EXIST")
@@ -346,6 +353,8 @@ class client :
                             print("Syntax error. Usage: GET_FILE <userName> <remote_fileName> <local_fileName>")
                     elif(line[0]=="QUIT") :
                         if (len(line) == 1) :
+                            if client._user is not None:
+                                client.disconnect(client._user)
                             break
                         else :
                             print("Syntax error. Use: QUIT")
