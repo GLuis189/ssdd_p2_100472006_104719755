@@ -354,9 +354,6 @@ void tratar_peticion(void *sockfd)
     else {
         printf("Invalid operation\n");
     }
-
-    close(s_local);
-
     close(s_local);
     pthread_exit(NULL);
 }
@@ -435,9 +432,11 @@ int main(int argc, char *argv[])
 
         while (busy)
         {
+            printf("bloqueado\n");
             pthread_cond_wait(&cond, &mutex);
             busy = true;
             pthread_mutex_unlock(&mutex);
+            printf("desbloqueado\n");
         }
     }
     
