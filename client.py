@@ -4,6 +4,8 @@ import socket
 import threading
 import os
 import sys
+import re
+
 class client :
     # ******************** TYPES *********************
     # *
@@ -190,17 +192,19 @@ class client :
             client._socket.connect((client._server, client._port))
             client._socket.sendall(f"LIST_USERS {client._user}\0".encode())
             response = client._socket.recv(1024).decode()
-            if response == '0':
-                response = client._socket.recv(1024).decode()
-                num_users = int(response.split('\x00')[0])
+            if response[0] == '0':
+                num_users = int(response[1])
                 print("c > LIST_USERS OK")
-                for _ in range(num_users):
-                    user_info = client._socket.recv(1024)
-                    user_info = user_info.decode().split('\0')
-                    print(user_info)
-                    print("llega")
-                    print(f"{user_info[0]} localhost {user_info[1]}\n")
+                print(num_users)
+                user_info_list = response[2:].split('\0')
+                user_info = user_info_list[0]
+                user_info = re.split(' ', user_info)
+                print(user_info)
+                for i in range(num_users): 
+                    print(f"{user_info[i]} localhost {user_info[i+1]}")
+                    user_info.remove(user_info[i])
                 return client.RC.OK
+
             elif response == '1':
                 print("c > LIST_USERS FAIL, USER DOES NOT EXIST")
                 return client.RC.USER_ERROR

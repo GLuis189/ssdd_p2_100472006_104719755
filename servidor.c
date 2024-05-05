@@ -125,7 +125,7 @@ void connect_user(int s_local, char* user, char* port)
 
             // Conecta al usuario y envía '0' al cliente
             f = fopen("connected_users.txt", "a");
-            fprintf(f, "%s %s\n", user, port);
+            fprintf(f, "%s %s \n", user, port);
             send(s_local, "0", 1, 0);
             fclose(f);
             return;
@@ -361,29 +361,27 @@ void list_users(int s_local, char* user)
     f = fopen("connected_users.txt", "r");
     if (f != NULL) {
         int num_users = 0;
+        char message[1024] = "0";
         while (fgets(line, sizeof(line), f)) {
             num_users++;
         }
         rewind(f);
-        send(s_local, "0", 1, 0);
         
         char num_users_str[10];
         sprintf(num_users_str, "%d", num_users);
-        printf("llega\n");
-        send(s_local, num_users_str, strlen(num_users_str) + 1, 0);
-        printf("llega2\n");
+        strcat(message, num_users_str);
+        
         while (fgets(line, sizeof(line), f)) {
             line[strcspn(line, "\n")] = 0;
-            send(s_local, line, strlen(line) + 1, 0);
+            strcat(message, line);
         }
         fclose(f);
+        send(s_local, message, strlen(message) + 1, 0);
     }
     close(s_local);
     return;
+
 }
-
-
-
 
 
 
