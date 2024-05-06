@@ -213,7 +213,7 @@ void publish_content(int s_local, char* user, char* filename, char* description)
 
     // Publica el contenido y envía '0' al cliente
     f = fopen("published_contents.txt", "a");
-    fprintf(f, "%s %s %s\n", user, filename, description);
+    fprintf(f, "%s %s %s \n", user, filename, description);
     send(s_local, "0", 1, 0);
     fclose(f);
     close(s_local);
@@ -436,34 +436,29 @@ void list_content(int s_local, char* user, char* target_user) {
     f = fopen("published_contents.txt", "r");
     if (f != NULL) {
         int num_files = 0;
-        char message[1024] = "0";
+        char message[2048] = "0";
         char* token;
         while (fgets(line, sizeof(line), f)) {
-            token = strtok(line, " ");
+            char temp_line[256];
+            strcpy(temp_line, line);  // copia la línea a una variable temporal
+            temp_line[strcspn(temp_line, "\n")] = 0;
 
+            token = strtok(temp_line, " ");
             if (strcmp(token, target_user) == 0) {
-                printf("lolol\n");
                 num_files++;
+                strcat(message, "\0");  // añade un carácter de separación
+                token = strtok(NULL, "\n");  // obtén el resto de la línea
+                if (token != NULL) {
+                    strcat(message, token);  // añade el nombre del archivo y la descripción al mensaje
+                }
             }
-        }
-        printf("que\n");
-        //rewind(f);
-        //printf(num_files);
-
-        char num_files_str[10];
-        sprintf(num_files_str, "%d", num_files);
-        printf("Imprime algo");
-        strcat(message, num_files_str);
-        printf("Imprime algo2");
-        while (fgets(line, sizeof(line), f)) {
-            if (strcmp(token, target_user) == 0) {
-                line[strcspn(line, "\n")] = 0;
-                strcat(message, line);
-            }
-        }
+        }    
         fclose(f);
         send(s_local, message, strlen(message) + 1, 0);
+        printf("envia \n");
+        fflush(stdout);
     }
+    printf("FIN\n");
     close(s_local);
     return;
 

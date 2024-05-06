@@ -236,16 +236,16 @@ class client :
             client._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             client._socket.connect((client._server, client._port))
             client._socket.sendall(f"LIST_CONTENT {user} {client._user}\0".encode())
-            response = client._socket.recv(1024).decode()
-            if response == '0':
-                num_files = int(response[1])
-                print("c > LIST_USERS OK")
-                user_info_list = response[2:].split('\0')
-                user_info = user_info_list[0]
-                user_info = re.split(' ', user_info)
-                for i in range(num_files): 
-                    print(f"{user_info[i]} {user_info[i+1]}")
-                    user_info.remove(user_info[i])
+            response = client._socket.recv(2048).decode()
+            if response[0] == '0':
+                user_info_list = response[1:].split('.')
+                file_name = user_info_list[0]
+                for i in range(1, len(user_info_list)):
+                    user_info_parts = user_info_list[i].split(' ', 1)  # divide cada línea en dos partes
+                    if len(user_info_parts) >= 2:
+                        file_extension, file_description = user_info_parts
+                        print(f'{file_name}.{file_extension} "{file_description}"')
+                        file_name = file_description.rsplit(' ', 1)[-1]  # actualiza el nombre del archivo para la próxima iteración
                 return client.RC.OK
             elif response == '1':
                 print("c > LIST_CONTENT FAIL, USER DOES NOT EXIST")
@@ -264,7 +264,7 @@ class client :
             return client.RC.ERROR
         finally:
             client._socket.close()
-    import os
+
     @staticmethod
     def getfile(user, remote_file_name, local_file_name):
         try:

@@ -1,4 +1,4 @@
-m m.txt asdasd asd asd
-t abew.t assd asd
-t asd.cd asdasd asd
-tra asd asdasd 
+aa prueba.txt archivo de prueba 
+aa prueba2.txt otra prueba 
+hola hola.txt hola que tal 
+aa otro.exe otro archivo 
