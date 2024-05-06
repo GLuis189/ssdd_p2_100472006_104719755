@@ -89,7 +89,7 @@ void unregister_user(int s_local, char* user)
     }
     
 }
-void connect_user(int s_local, char* user, char* port)
+void connect_user(int s_local, char* user, char* ip, char* port)
 {
     printf("s> OPERATION CONNECT FROM %s\n",user);
     FILE *f;
@@ -125,7 +125,7 @@ void connect_user(int s_local, char* user, char* port)
 
             // Conecta al usuario y envía '0' al cliente
             f = fopen("connected_users.txt", "a");
-            fprintf(f, "%s %s \n", user, port);
+            fprintf(f, "%s %s %s \n", user, ip, port);
             send(s_local, "0", 1, 0);
             fclose(f);
             return;
@@ -383,6 +383,91 @@ void list_users(int s_local, char* user)
 
 }
 
+void list_content(int s_local, char* user, char* target_user) {
+    printf("s> OPERATION LIST_CONTENT\n");
+    FILE *f;
+    f = fopen("users.txt", "r");
+    if (f == NULL)
+    {
+        printf("Error opening file!\n");
+        exit(1);
+    }
+    // Comprueba si el usuario ya está registrado
+    char line[256];
+    bool user_exists = false;
+    while (fgets(line, sizeof(line), f)) {
+        // Elimina el salto de línea al final de la línea
+        line[strcspn(line, "\n")] = 0;
+        if (strcmp(line, user) == 0) {
+            user_exists = true;
+            break;
+        }
+    }
+    fclose(f);
+    if (!user_exists) {
+        // El usuario no está registrado, envía '1' al cliente
+        send(s_local, "1", 1, 0);
+        close(s_local);
+        return;
+    }
+
+    // Comprueba si el usuario ya está conectado
+    f = fopen("connected_users.txt", "r");
+    if (f != NULL) {
+        bool user_connected = false;
+        while (fgets(line, sizeof(line), f)) {
+            line[strcspn(line, "\n")] = 0;
+            char* connected_user = strtok(line, " ");
+            if (strcmp(connected_user, user) == 0) {
+                user_connected = true;
+                break;
+            }
+        }
+        fclose(f);
+        if (!user_connected) {
+            // El usuario no está conectado, envía '2' al cliente
+            send(s_local, "2", 1, 0);
+            close(s_local);
+            return;
+        }
+    }
+    printf("AQUI\n");
+    // Lista los ficheros del usuario y envía '0' al cliente
+    f = fopen("published_contents.txt", "r");
+    if (f != NULL) {
+        int num_files = 0;
+        char message[1024] = "0";
+        char* token;
+        while (fgets(line, sizeof(line), f)) {
+            token = strtok(line, " ");
+
+            if (strcmp(token, target_user) == 0) {
+                printf("lolol\n");
+                num_files++;
+            }
+        }
+        printf("que\n");
+        //rewind(f);
+        //printf(num_files);
+
+        char num_files_str[10];
+        sprintf(num_files_str, "%d", num_files);
+        printf("Imprime algo");
+        strcat(message, num_files_str);
+        printf("Imprime algo2");
+        while (fgets(line, sizeof(line), f)) {
+            if (strcmp(token, target_user) == 0) {
+                line[strcspn(line, "\n")] = 0;
+                strcat(message, line);
+            }
+        }
+        fclose(f);
+        send(s_local, message, strlen(message) + 1, 0);
+    }
+    close(s_local);
+    return;
+
+}
 
 
 void disconnect_user(int s_local, char* user)
@@ -397,23 +482,18 @@ void disconnect_user(int s_local, char* user)
     temp = fopen("temp.txt", "w");
     if (f != NULL) {
         while (fgets(line, sizeof(line), f)) {
-            line[strcspn(line, "\n")] = 0;
-            char* connected_user = strtok(line, " ");
+            char temp_line[256];
+            strcpy(temp_line, line);  // copia la línea a una variable temporal
+            temp_line[strcspn(temp_line, "\n")] = 0;
+            
+            char* connected_user = strtok(temp_line, " ");
             if (strcmp(connected_user, user) == 0) {
                 // El usuario está conectado, no lo escribas en el archivo temporal
                 user_exists = true;
             } else {
                 // Escribe la línea en el archivo temporal
-                fprintf(temp, "%s\n", line);
+                fprintf(temp, "%s", line);
             }
-        }
-        if (!user_exists) {
-            // El usuario no está conectado, envía '1' al cliente
-            send(s_local, "1", 1, 0);
-            fclose(f);
-            fclose(temp);
-            close(s_local);
-            return;
         }
         fclose(f);
         fclose(temp);
@@ -421,8 +501,13 @@ void disconnect_user(int s_local, char* user)
         remove("connected_users.txt");
         rename("temp.txt", "connected_users.txt");
         if (!user_exists) {
-            // El usuario no está conectado, envía '2' al cliente
-            send(s_local, "2", 1, 0);
+            // El usuario no está conectado, envía '1' al cliente
+            send(s_local, "1", 1, 0);
+            close(s_local);
+            return;
+        } else {
+            // El usuario está conectado, envía '0' al cliente
+            send(s_local, "0", 1, 0);
             close(s_local);
             return;
         }
@@ -431,12 +516,8 @@ void disconnect_user(int s_local, char* user)
         printf("Error opening file!\n");
         exit(1);
     }
-
-    // Desconecta al usuario y envía '0' al cliente
-    send(s_local, "0", 1, 0);
-    close(s_local);
-    return;
 }
+
 
 
 
@@ -486,10 +567,12 @@ void tratar_peticion(void *sockfd)
     else if (op && strcmp(op, "CONNECT") == 0){ //CONNECT
         char *user = strtok(NULL, " ");
         printf("s> USER %s\n", user);
+        char *ip = strtok(NULL, " ");
+        printf("s> IP %s\n", ip);
         char *port = strtok(NULL, " ");
         printf("s> PORT %s\n", port);
         if (user) {
-            connect_user(s_local, user, port);
+            connect_user(s_local, user, ip, port);
         } else {
             printf("No user provided\n");
         }
@@ -527,11 +610,22 @@ void tratar_peticion(void *sockfd)
             printf("No filename or description provided\n");
         }
     }
-    else if (op && strcmp(op, "LIST_USERS") == 0){ //PUBLISH
+    else if (op && strcmp(op, "LIST_USERS") == 0){ 
         char *user = strtok(NULL, " ");
         printf("s> USER %s\n", user);
         if (user) {
             list_users(s_local, user);
+        } else {
+            printf("No user provided\n");
+        }
+    }
+    else if (op && strcmp(op, "LIST_CONTENT") == 0){ 
+        char *user = strtok(NULL, " ");
+        printf("s> USER %s\n", user);
+        char *user2 = strtok(NULL, " ");
+        printf("s> USER connected %s\n", user2);
+        if (user) {
+            list_content(s_local, user2, user);
         } else {
             printf("No user provided\n");
         }
@@ -615,14 +709,14 @@ int main(int argc, char *argv[])
         pthread_create(&thid, &attr, tratar_peticion, (void *)&sc);
         printf("s> new connection from %s\n", inet_ntoa(client_addr.sin_addr));
 
-        while (busy)
+        /*while (busy)
         {
             printf("bloqueado\n");
             pthread_cond_wait(&cond, &mutex);
             busy = true;
             pthread_mutex_unlock(&mutex);
             printf("desbloqueado\n");
-        }
+        }*/
     }
     
     close(sd);

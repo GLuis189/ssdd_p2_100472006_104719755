@@ -21,13 +21,21 @@ class client :
     _listen_socket = None
     _listen_thread = None
     _user = None
+    HILO = True
+    _hilo_lock = threading.Lock()  # Mutex para proteger HILO
     # ******************** METHODS *******************
     @staticmethod
     def handle_requests():
         while True:
-            conn, addr = client._listen_socket.accept()
-            # handle the request here
-            conn.close()
+            with client._hilo_lock:
+                if not client.HILO:
+                    break
+            try:
+                conn, addr = client._listen_socket.accept()
+                # maneja la solicitud aquí
+                conn.close()
+            except socket.timeout:
+                continue
     @staticmethod
     def register(user):
         try:
@@ -82,10 +90,12 @@ class client :
             client._listen_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             client._listen_socket.bind(('localhost', 0))  # bind to a free port
             listen_port = client._listen_socket.getsockname()[1]
+            listen_ip = client._listen_socket.getsockname()[0]
+            client._listen_socket.settimeout(1)  # establece un tiempo de espera de 1 segundo
             client._listen_socket.listen(1)
             client._listen_thread = threading.Thread(target=client.handle_requests)
             client._listen_thread.start()
-            client._socket.sendall(f"CONNECT {user} {listen_port}\0".encode())
+            client._socket.sendall(f"CONNECT {user} {listen_ip} {listen_port}\0".encode())
             response = client._socket.recv(1024).decode()
             if response == '0':
                 print("c > CONNECT OK")
@@ -112,6 +122,9 @@ class client :
             client._socket.sendall(f"DISCONNECT {user}\0".encode())
             response = client._socket.recv(1024).decode()
             if response == '0':
+                client._user = None
+                with client._hilo_lock:
+                    client.HILO = False
                 print("c > DISCONNECT OK")
                 client._listen_thread.join()  # stop the listening thread
                 print("c > STOPPED LISTENING")
@@ -195,16 +208,14 @@ class client :
             if response[0] == '0':
                 num_users = int(response[1])
                 print("c > LIST_USERS OK")
-                print(num_users)
                 user_info_list = response[2:].split('\0')
                 user_info = user_info_list[0]
                 user_info = re.split(' ', user_info)
-                print(user_info)
                 for i in range(num_users): 
-                    print(f"{user_info[i]} localhost {user_info[i+1]}")
+                    print(f"{user_info[i]} {user_info[i+1]} {user_info[i+2]}")
                     user_info.remove(user_info[i])
+                    user_info.remove(user_info[i+1])
                 return client.RC.OK
-
             elif response == '1':
                 print("c > LIST_USERS FAIL, USER DOES NOT EXIST")
                 return client.RC.USER_ERROR
@@ -224,14 +235,17 @@ class client :
         try:
             client._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             client._socket.connect((client._server, client._port))
-            client._socket.sendall(f"LIST_CONTENT {user}\0".encode())
+            client._socket.sendall(f"LIST_CONTENT {user} {client._user}\0".encode())
             response = client._socket.recv(1024).decode()
             if response == '0':
-                num_files = int(client._socket.recv(1024).decode())
-                print("c > LIST_CONTENT OK")
-                for _ in range(num_files):
-                    file_info = client._socket.recv(1024).decode().split('\0', 1)
-                    print(f"{file_info[0]} \"{file_info[1]}\"")
+                num_files = int(response[1])
+                print("c > LIST_USERS OK")
+                user_info_list = response[2:].split('\0')
+                user_info = user_info_list[0]
+                user_info = re.split(' ', user_info)
+                for i in range(num_files): 
+                    print(f"{user_info[i]} {user_info[i+1]}")
+                    user_info.remove(user_info[i])
                 return client.RC.OK
             elif response == '1':
                 print("c > LIST_CONTENT FAIL, USER DOES NOT EXIST")
