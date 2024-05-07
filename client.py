@@ -39,14 +39,15 @@ class client :
     @staticmethod
     def register(user):
         try:
-            if client._socket is None:
-                client._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                client._socket.connect((client._server, client._port))
+            _socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            _socket.connect((client._server, client._port))
             message = f"REGISTER {user}\0"
-            client._socket.sendall(message.encode())
-            response = client._socket.recv(1024).decode()
+            _socket.sendall(message.encode())
+            response = _socket.recv(1024).decode()
+            _socket.close()
             if response == '0':
                 print("c > REGISTER OK")
+                os.makedirs(user, exist_ok=True)  # crea un directorio para el usuario
                 return client.RC.OK
             elif response == '1':
                 print("c > USERNAME IN USE")
@@ -57,8 +58,8 @@ class client :
         except Exception as e:
             print(f"Error: {str(e)}")
             return client.RC.ERROR
-        finally:
-            client._socket.close()
+
+        
     @staticmethod
     def unregister(user):
         try:
@@ -68,6 +69,7 @@ class client :
             response = client._socket.recv(1024).decode()
             if response == '0':
                 print("c > UNREGISTER OK")
+                os.rmdir(user)
                 return client.RC.OK
             elif response == '1':
                 print("c > USER DOES NOT EXIST")
@@ -153,6 +155,7 @@ class client :
             response = client._socket.recv(1024).decode()
             if response == '0':
                 print("c > PUBLISH OK")
+                os.mknod(f"{client._user}/{fileName}")  # crea un archivo vacío en el directorio del usuario
                 return client.RC.OK
             elif response == '1':
                 print("c > PUBLISH FAIL, USER DOES NOT EXIST")
@@ -238,14 +241,19 @@ class client :
             client._socket.sendall(f"LIST_CONTENT {user} {client._user}\0".encode())
             response = client._socket.recv(2048).decode()
             if response[0] == '0':
-                user_info_list = response[1:].split('.')
-                file_name = user_info_list[0]
-                for i in range(1, len(user_info_list)):
-                    user_info_parts = user_info_list[i].split(' ', 1)  # divide cada línea en dos partes
-                    if len(user_info_parts) >= 2:
-                        file_extension, file_description = user_info_parts
-                        print(f'{file_name}.{file_extension} "{file_description}"')
-                        file_name = file_description.rsplit(' ', 1)[-1]  # actualiza el nombre del archivo para la próxima iteración
+                response = response[1:]
+                pattern = r"(\w+\.\w+)"  # busca palabras que contengan un punto (nombres de archivo)
+                matches = re.finditer(pattern, response)
+                start = 0
+                for match in matches:
+                    description = response[start:match.start()].strip()
+                    if description:
+                        print(f'{file_name} "{description}"')
+                    file_name = match.group()
+                    start = match.end()
+                description = response[start:].strip()
+                if description:
+                    print(f'{file_name} "{description}"')
                 return client.RC.OK
             elif response == '1':
                 print("c > LIST_CONTENT FAIL, USER DOES NOT EXIST")
@@ -271,7 +279,7 @@ class client :
             client._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             # assuming _server and _port are the IP and port of the other client
             client._socket.connect((client._server, client._port))  
-            client._socket.sendall(f"GET_FILE {remote_file_name}\0".encode())
+            client._socket.sendall(f"GET_FILE {user} {remote_file_name}\0".encode())
             response = client._socket.recv(1024).decode()
             if response == '0':
                 with open(local_file_name, 'wb') as f:

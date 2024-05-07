@@ -594,7 +594,7 @@ void tratar_peticion(void *sockfd)
             printf("No filename or description provided\n");
         }
     }
-    else if (op && strcmp(op, "DELETE") == 0){ //PUBLISH
+    else if (op && strcmp(op, "DELETE") == 0){ //DELETE
         char *user = strtok(NULL, " ");
         printf("s> USER %s\n", user);
         char *filename = strtok(NULL, " ");
@@ -605,7 +605,7 @@ void tratar_peticion(void *sockfd)
             printf("No filename or description provided\n");
         }
     }
-    else if (op && strcmp(op, "LIST_USERS") == 0){ 
+    else if (op && strcmp(op, "LIST_USERS") == 0){ //LIST_USERS
         char *user = strtok(NULL, " ");
         printf("s> USER %s\n", user);
         if (user) {
@@ -614,7 +614,7 @@ void tratar_peticion(void *sockfd)
             printf("No user provided\n");
         }
     }
-    else if (op && strcmp(op, "LIST_CONTENT") == 0){ 
+    else if (op && strcmp(op, "LIST_CONTENT") == 0){ //LIST_CONTENT
         char *user = strtok(NULL, " ");
         printf("s> USER %s\n", user);
         char *user2 = strtok(NULL, " ");
@@ -688,7 +688,7 @@ int main(int argc, char *argv[])
 
     size = sizeof(client_addr);
 
-    printf("s> init server <local IP>: <%d>\n", atoi(argv[2]));
+    printf("s> init server <%s>: <%d>\n", inet_ntoa(server_addr.sin_addr), atoi(argv[2]));
 
     // Aceptar la conexión en sí
     while (1)
