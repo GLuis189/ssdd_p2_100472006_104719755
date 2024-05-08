@@ -513,6 +513,99 @@ void disconnect_user(int s_local, char* user)
     }
 }
 
+void get_file(int s_local, char* user, char* r_file){
+    printf("s> OPERATION GET_FILE FROM %s\n",user);
+
+    FILE *f;
+    f = fopen("users.txt", "r");
+    if (f == NULL)
+    {
+        printf("Error opening file!\n");
+        exit(1);
+    }
+    // Comprueba si el usuario ya está registrado
+    char line[256];
+    bool user_exists = false;
+    while (fgets(line, sizeof(line), f)) {
+        // Elimina el salto de línea al final de la línea
+        line[strcspn(line, "\n")] = 0;
+        if (strcmp(line, user) == 0) {
+            user_exists = true;
+            break;
+        }
+    }
+    fclose(f);
+    if (!user_exists) {
+        // El usuario no está registrado, envía '1' al cliente
+        send(s_local, "1", 1, 0);
+        close(s_local);
+        return;
+    }
+
+    // Comprobar que el archivo este publidacado por el usuario
+    f = fopen("published_contents.txt", "r");
+    if (f != NULL) {
+        char line[256];
+        bool file_exists = false;
+        while (fgets(line, sizeof(line), f)) {
+            line[strcspn(line, "\n")] = 0;
+            char* published_user = strtok(line, " ");
+            char* published_filename = strtok(NULL, " ");
+            if (strcmp(published_filename, r_file) == 0 && strcmp(published_user, user) == 0) {
+                file_exists = true;
+                break;
+            }
+        }
+        fclose(f);
+        if (!file_exists) {
+            // El archivo no está publicado por el usuario, envía '2' al cliente
+            send(s_local, "2", 1, 0);
+            close(s_local);
+            return;
+        }
+    } else {
+        // Error al abrir el archivo
+        printf("Error opening file!\n");
+        exit(1);
+    }
+
+    // Comprueba si el usuario ya está conectado y envial al cliente el '0' junto con la ip y el puerto de dicho usuario
+    f = fopen("connected_users.txt", "r");
+    if (f != NULL) {
+        bool user_connected = false;
+        while (fgets(line, sizeof(line), f)) {
+            line[strcspn(line, "\n")] = 0;
+            char* connected_user = strtok(line, " ");
+            if (strcmp(connected_user, user) == 0) {
+                user_connected = true;
+                char* ip = strtok(NULL, " ");
+                char* port = strtok(NULL, " ");
+                char message[256];
+                strcpy(message, "0 ");
+                strcat(message, ip);
+                strcat(message, " ");
+                strcat(message, port);
+                send(s_local, message, strlen(message) + 1, 0);
+                fclose(f);
+                close(s_local);
+                return;
+            }
+        }
+        fclose(f);
+        if (!user_connected) {
+            // El usuario no está conectado, envía '2' al cliente
+            send(s_local, "2", 1, 0);
+            close(s_local);
+            return;
+        }
+    } else {
+        // Error al abrir el archivo
+        printf("Error opening file!\n");
+        exit(1);
+    }
+
+    return NULL;
+}
 
 
 
@@ -621,6 +714,17 @@ void tratar_peticion(void *sockfd)
         printf("s> USER connected %s\n", user2);
         if (user) {
             list_content(s_local, user2, user);
+        } else {
+            printf("No user provided\n");
+        }
+    }
+    else if (op && strcmp(op, "GET_FILE") == 0){ //LIST_CONTENT
+        char *user = strtok(NULL, " ");
+        printf("s> USER %s\n", user);
+        char *r_file = strtok(NULL, " ");
+        printf("s> FILE %s\n", r_file);
+        if (user) {
+            get_file(s_local, user, r_file);
         } else {
             printf("No user provided\n");
         }

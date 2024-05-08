@@ -33,6 +33,21 @@ class client :
             try:
                 conn, addr = client._listen_socket.accept()
                 # maneja la solicitud aquí
+                data = conn.recv(1024).decode()
+                data = data.split(' ')
+                if data[0] == 'F':
+                    file_name = data[1].strip('\0')
+                    if os.path.exists(f"{client._user}/{file_name}"):
+                        file_ip = conn.getsockname()[0]
+                        file_port = conn.getsockname()[1]
+                        with open(f"{client._user}/{file_name}", 'rb') as file:
+                            while True:
+                                data = file.read(1024)
+                                if not data:
+                                    break
+                                conn.sendall(data)
+                else:
+                    conn.sendall("1\0".encode())  # indica que el archivo no existe
                 conn.close()
             except socket.timeout:
                 continue
@@ -277,18 +292,27 @@ class client :
     def getfile(user, remote_file_name, local_file_name):
         try:
             client._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            # assuming _server and _port are the IP and port of the other client
             client._socket.connect((client._server, client._port))  
             client._socket.sendall(f"GET_FILE {user} {remote_file_name}\0".encode())
             response = client._socket.recv(1024).decode()
-            if response == '0':
-                with open(local_file_name, 'wb') as f:
+            if response[0] == '0':
+                print("c > GET_FILE OK")
+                print(response)
+                # crear una conexión con el otro cliente
+                response = response.split(' ')
+                file_ip = response[1]
+                file_port = int(response[2].strip('\x00'))
+                file_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                file_socket.connect((file_ip, file_port))
+                file_socket.sendall(f"F {remote_file_name}\0".encode())
+                with open(f"{client._user}/{local_file_name}", 'w') as file:
                     while True:
-                        data = client._socket.recv(1024)
+                        data = file_socket.recv(1024).decode()
+                        print(data)
                         if not data:
                             break
-                        f.write(data)
-                print("c > GET_FILE OK")
+                        file.write(data)
+
                 return client.RC.OK
             elif response == '1':
                 print("c > GET_FILE FAIL, FILE NOT EXIST")
@@ -301,7 +325,7 @@ class client :
             return client.RC.ERROR
         finally:
             client._socket.close()
-            if response != '0' and os.path.exists(local_file_name):
+            if response[0] != '0' and os.path.exists(local_file_name):
                 os.remove(local_file_name)  # delete the local file if the transfer was not successful
     @staticmethod
     def parseArguments(argv):
