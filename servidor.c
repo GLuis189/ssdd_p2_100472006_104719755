@@ -85,6 +85,29 @@ void unregister_user(int s_local, char* user)
             rename("users2.txt", "users.txt");
 
             // eliminar las entradas de publish_contents.txt que ha publicado el usuario que hace el unregister
+            FILE *f4;
+            f4 = fopen("published_contents.txt", "r");
+            FILE *f5;
+            f5 = fopen("published_contents2.txt", "w");
+            while (fgets(line, sizeof(line), f4)) {
+            // Elimina el salto de línea al final de la línea
+            char temp_line[1024];
+            strcpy(temp_line, line);
+            temp_line[strcspn(temp_line, "\n")] = 0;
+
+            char* published_user = strtok(temp_line, " ");
+            if (strcmp(published_user, user) != 0) {
+                line[strcspn(line, "\n")] = 0;  // también elimina el salto de línea de 'line'
+                fprintf(f5, "%s\n", line);
+            }
+        
+            }
+            fclose(f4);
+            fclose(f5);
+            remove("published_contents.txt");
+            rename("published_contents2.txt", "published_contents.txt");
+            
+            
 
 
             close(s_local);
