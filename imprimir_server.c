@@ -9,7 +9,7 @@
 bool_t
 imprimir_nf_1_svc(char *op, char *fecha, char *hora, char *user, int *result,  struct svc_req *rqstp)
 {
-	bool_t retval;
+	bool_t retval = TRUE;
 
 	printf("%s    %s    %s %s\n", user, op, fecha, hora);
 
@@ -19,7 +19,7 @@ imprimir_nf_1_svc(char *op, char *fecha, char *hora, char *user, int *result,  s
 bool_t
 imprimir_f_1_svc(char *op, char *fecha, char *hora, char *user, char *file, int *result,  struct svc_req *rqstp)
 {
-	bool_t retval;
+	bool_t retval = TRUE;
 
 	printf("%s    %s %s    %s %s\n", user, op, file, fecha, hora);
 

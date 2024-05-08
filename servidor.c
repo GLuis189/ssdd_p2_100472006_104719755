@@ -17,8 +17,6 @@ pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 int busy = true;
 pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
 
-char host[4];
-
 void register_user(int s_local, char* user)
 {
     printf("s> OPERATION REGISTER FROM %s\n",user);
@@ -645,6 +643,7 @@ void tratar_peticion(void *sockfd)
     int *sockfd_int = (int *)sockfd;
     int err;
     int s_local;
+    int n;
     
     char buffer[1024];
 
@@ -679,6 +678,7 @@ void tratar_peticion(void *sockfd)
     printf("2");
             fflush(stdout);
 
+    char *host = "localhost";
 
     clnt = clnt_create(host, IMPRIMIR, IMPRIMIR_V1, "tcp");
     if (clnt == NULL) {
@@ -690,7 +690,7 @@ void tratar_peticion(void *sockfd)
 
     if (op && strcmp(op, "REGISTER") == 0){ //REGISTER
         if (user) {
-            retval = imprimir_nf_1(op, fecha, hora, user, NULL, clnt);
+            retval = imprimir_nf_1(op, fecha, hora, user, &n, clnt);
             printf("4");
             fflush(stdout);
             if (retval != RPC_SUCCESS) {
@@ -703,7 +703,7 @@ void tratar_peticion(void *sockfd)
     }
     else if (op && strcmp(op, "UNREGISTER") == 0){ //UNREGISTER
         if (user) {
-            retval = imprimir_nf_1(op, fecha, hora, user, NULL, clnt);
+            retval = imprimir_nf_1(op, fecha, hora, user, &n, clnt);
             if (retval != RPC_SUCCESS) {
                 clnt_perror(clnt, "call failed");
             }
@@ -713,7 +713,7 @@ void tratar_peticion(void *sockfd)
         }
     }
     else if (op && strcmp(op, "CONNECT") == 0){ //CONNECT
-        retval = imprimir_nf_1(op, fecha, hora, user, NULL, clnt);
+        retval = imprimir_nf_1(op, fecha, hora, user, &n, clnt);
         if (retval != RPC_SUCCESS) {
             clnt_perror(clnt, "call failed");
         }
@@ -728,7 +728,7 @@ void tratar_peticion(void *sockfd)
         }
     }
     else if (op && strcmp(op, "DISCONNECT") == 0){ //DISCONNECT
-        retval = imprimir_nf_1(op, fecha, hora, user, NULL, clnt);
+        retval = imprimir_nf_1(op, fecha, hora, user, &n, clnt);
         if (retval != RPC_SUCCESS) {
             clnt_perror(clnt, "call failed");
         }
@@ -743,7 +743,7 @@ void tratar_peticion(void *sockfd)
         printf("s> FILENAME %s\n", filename);
         char *description = strtok(NULL, "");
         printf("s> DESCRIPTION %s\n", description);
-        retval = imprimir_f_1(op, fecha, hora, user, filename, NULL, clnt);
+        retval = imprimir_f_1(op, fecha, hora, user, filename, &n, clnt);
         if (retval != RPC_SUCCESS) {
             clnt_perror(clnt, "call failed");
         }
@@ -756,7 +756,7 @@ void tratar_peticion(void *sockfd)
     else if (op && strcmp(op, "DELETE") == 0){ //DELETE
         char *filename = strtok(NULL, " ");
         printf("s> FILENAME %s\n", filename);
-        retval = imprimir_f_1(op, fecha, hora, user, filename, NULL, clnt);
+        retval = imprimir_f_1(op, fecha, hora, user, filename, &n, clnt);
         if (retval != RPC_SUCCESS) {
             clnt_perror(clnt, "call failed");
         }
@@ -767,7 +767,7 @@ void tratar_peticion(void *sockfd)
         }
     }
     else if (op && strcmp(op, "LIST_USERS") == 0){ //LIST_USERS
-        retval = imprimir_nf_1(op, fecha, hora, user, NULL, clnt);
+        retval = imprimir_nf_1(op, fecha, hora, user, &n, clnt);
         if (retval != RPC_SUCCESS) {
             clnt_perror(clnt, "call failed");
         }
@@ -778,7 +778,7 @@ void tratar_peticion(void *sockfd)
         }
     }
     else if (op && strcmp(op, "LIST_CONTENT") == 0){ //LIST_CONTENT
-        retval = imprimir_nf_1(op, fecha, hora, user, NULL, clnt);
+        retval = imprimir_nf_1(op, fecha, hora, user, &n, clnt);
         if (retval != RPC_SUCCESS) {
             clnt_perror(clnt, "call failed");
         }
@@ -791,7 +791,7 @@ void tratar_peticion(void *sockfd)
         }
     }
     else if (op && strcmp(op, "GET_FILE") == 0){ //GET_FILE
-        retval = imprimir_nf_1(op, fecha, hora, user, NULL, clnt);
+        retval = imprimir_nf_1(op, fecha, hora, user, &n, clnt);
         if (retval != RPC_SUCCESS) {
             clnt_perror(clnt, "call failed");
         }
@@ -827,7 +827,6 @@ int main(int argc, char *argv[])
     pthread_t thid;
     pthread_attr_t attr;
 
-    strcpy(host, argv[2]);
 
     // Inicializar el atributo
     pthread_attr_init(&attr);
