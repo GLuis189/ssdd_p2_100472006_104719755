@@ -9,11 +9,15 @@
 #include <stdlib.h>
 #include <string.h>
 #include <netinet/in.h>
-#include "lines.h"
+#include "imprimir.h"
+#include <rpc/rpc.h>
+
 
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 int busy = true;
 pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
+
+char host[4];
 
 void register_user(int s_local, char* user)
 {
@@ -662,29 +666,57 @@ void tratar_peticion(void *sockfd)
     char *fecha = strtok(NULL, " ");
     char *hora = strtok(NULL, " ");
     
-    printf("s> OPERATION %s TIME: %s %s \n", op, fecha, hora);
+    // printf("s> OPERATION %s TIME: %s %s \n", op, fecha, hora);
+
+    char *user = strtok(NULL, " ");
+    printf("s> USER %s\n", user);
+
+    printf("1");
+            fflush(stdout);
     
+    CLIENT *clnt;
+    enum clnt_stat retval;
+    printf("2");
+            fflush(stdout);
+
+
+    clnt = clnt_create(host, IMPRIMIR, IMPRIMIR_V1, "tcp");
+    if (clnt == NULL) {
+        clnt_pcreateerror(host);
+        exit(1);
+    }
+    printf("3");
+            fflush(stdout);
+
     if (op && strcmp(op, "REGISTER") == 0){ //REGISTER
-        char *user = strtok(NULL, " ");
-        printf("s> USER %s\n", user);
         if (user) {
+            retval = imprimir_nf_1(op, fecha, hora, user, NULL, clnt);
+            printf("4");
+            fflush(stdout);
+            if (retval != RPC_SUCCESS) {
+                clnt_perror(clnt, "call failed");
+            }
             register_user(s_local, user);
         } else {
             printf("No user provided\n");
         }
     }
     else if (op && strcmp(op, "UNREGISTER") == 0){ //UNREGISTER
-        char *user = strtok(NULL, " ");
-        printf("s> USER %s\n", user);
         if (user) {
+            retval = imprimir_nf_1(op, fecha, hora, user, NULL, clnt);
+            if (retval != RPC_SUCCESS) {
+                clnt_perror(clnt, "call failed");
+            }
             unregister_user(s_local, user);
         } else {
             printf("No user provided\n");
         }
     }
     else if (op && strcmp(op, "CONNECT") == 0){ //CONNECT
-        char *user = strtok(NULL, " ");
-        printf("s> USER %s\n", user);
+        retval = imprimir_nf_1(op, fecha, hora, user, NULL, clnt);
+        if (retval != RPC_SUCCESS) {
+            clnt_perror(clnt, "call failed");
+        }
         char *ip = strtok(NULL, " ");
         printf("s> IP %s\n", ip);
         char *port = strtok(NULL, " ");
@@ -696,8 +728,10 @@ void tratar_peticion(void *sockfd)
         }
     }
     else if (op && strcmp(op, "DISCONNECT") == 0){ //DISCONNECT
-        char *user = strtok(NULL, " ");
-        printf("s> USER %s\n", user);
+        retval = imprimir_nf_1(op, fecha, hora, user, NULL, clnt);
+        if (retval != RPC_SUCCESS) {
+            clnt_perror(clnt, "call failed");
+        }
         if (user) {
             disconnect_user(s_local, user);
         } else {
@@ -705,12 +739,14 @@ void tratar_peticion(void *sockfd)
         }
     }
     else if (op && strcmp(op, "PUBLISH") == 0){ //PUBLISH
-        char *user = strtok(NULL, " ");
-        printf("s> USER %s\n", user);
         char *filename = strtok(NULL, " ");
         printf("s> FILENAME %s\n", filename);
         char *description = strtok(NULL, "");
         printf("s> DESCRIPTION %s\n", description);
+        retval = imprimir_f_1(op, fecha, hora, user, filename, NULL, clnt);
+        if (retval != RPC_SUCCESS) {
+            clnt_perror(clnt, "call failed");
+        }
         if (user && filename && description) {
             publish_content(s_local, user, filename, description);
         } else {
@@ -718,10 +754,12 @@ void tratar_peticion(void *sockfd)
         }
     }
     else if (op && strcmp(op, "DELETE") == 0){ //DELETE
-        char *user = strtok(NULL, " ");
-        printf("s> USER %s\n", user);
         char *filename = strtok(NULL, " ");
         printf("s> FILENAME %s\n", filename);
+        retval = imprimir_f_1(op, fecha, hora, user, filename, NULL, clnt);
+        if (retval != RPC_SUCCESS) {
+            clnt_perror(clnt, "call failed");
+        }
         if (user && filename) {
             delete_content(s_local, user, filename);
         } else {
@@ -729,8 +767,10 @@ void tratar_peticion(void *sockfd)
         }
     }
     else if (op && strcmp(op, "LIST_USERS") == 0){ //LIST_USERS
-        char *user = strtok(NULL, " ");
-        printf("s> USER %s\n", user);
+        retval = imprimir_nf_1(op, fecha, hora, user, NULL, clnt);
+        if (retval != RPC_SUCCESS) {
+            clnt_perror(clnt, "call failed");
+        }
         if (user) {
             list_users(s_local, user);
         } else {
@@ -738,8 +778,10 @@ void tratar_peticion(void *sockfd)
         }
     }
     else if (op && strcmp(op, "LIST_CONTENT") == 0){ //LIST_CONTENT
-        char *user = strtok(NULL, " ");
-        printf("s> USER %s\n", user);
+        retval = imprimir_nf_1(op, fecha, hora, user, NULL, clnt);
+        if (retval != RPC_SUCCESS) {
+            clnt_perror(clnt, "call failed");
+        }
         char *user2 = strtok(NULL, " ");
         printf("s> USER connected %s\n", user2);
         if (user) {
@@ -748,9 +790,11 @@ void tratar_peticion(void *sockfd)
             printf("No user provided\n");
         }
     }
-    else if (op && strcmp(op, "GET_FILE") == 0){ //LIST_CONTENT
-        char *user = strtok(NULL, " ");
-        printf("s> USER %s\n", user);
+    else if (op && strcmp(op, "GET_FILE") == 0){ //GET_FILE
+        retval = imprimir_nf_1(op, fecha, hora, user, NULL, clnt);
+        if (retval != RPC_SUCCESS) {
+            clnt_perror(clnt, "call failed");
+        }
         char *r_file = strtok(NULL, " ");
         printf("s> FILE %s\n", r_file);
         if (user) {
@@ -782,6 +826,8 @@ int main(int argc, char *argv[])
     int err;
     pthread_t thid;
     pthread_attr_t attr;
+
+    strcpy(host, argv[2]);
 
     // Inicializar el atributo
     pthread_attr_init(&attr);
