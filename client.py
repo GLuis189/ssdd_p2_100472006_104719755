@@ -3,8 +3,9 @@ import argparse
 import socket
 import threading
 import os
-import sys
+import zeep
 import re
+import shutil
 
 class client :
     # ******************** TYPES *********************
@@ -23,6 +24,12 @@ class client :
     _user = None
     HILO = True
     _hilo_lock = threading.Lock()  # Mutex para proteger HILO
+
+    wsdl_url = "http://localhost:8000/?wsdl"
+    soap = zeep.Client(wsdl=wsdl_url)
+    
+    def time():
+        return client.soap.service.time_sv()
     # ******************** METHODS *******************
     @staticmethod
     def handle_requests():
@@ -38,8 +45,6 @@ class client :
                 if data[0] == 'F':
                     file_name = data[1].strip('\0')
                     if os.path.exists(f"{client._user}/{file_name}"):
-                        file_ip = conn.getsockname()[0]
-                        file_port = conn.getsockname()[1]
                         with open(f"{client._user}/{file_name}", 'rb') as file:
                             while True:
                                 data = file.read(1024)
@@ -53,10 +58,11 @@ class client :
                 continue
     @staticmethod
     def register(user):
+        time = client.time()
         try:
             _socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             _socket.connect((client._server, client._port))
-            message = f"REGISTER {user}\0"
+            message = f"REGISTER {time} {user}\0"
             _socket.sendall(message.encode())
             response = _socket.recv(1024).decode()
             _socket.close()
@@ -77,14 +83,15 @@ class client :
         
     @staticmethod
     def unregister(user):
+        time = client.time()
         try:
             client._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             client._socket.connect((client._server, client._port))
-            client._socket.sendall(f"UNREGISTER {user}\0".encode())
+            client._socket.sendall(f"UNREGISTER {time} {user}\0".encode())
             response = client._socket.recv(1024).decode()
             if response == '0':
                 print("c > UNREGISTER OK")
-                os.rmdir(user)
+                shutil.rmtree(user)
                 return client.RC.OK
             elif response == '1':
                 print("c > USER DOES NOT EXIST")
@@ -100,6 +107,7 @@ class client :
             
     @staticmethod
     def connect(user):
+        time = client.time()
         try:
             client._user = user
             client._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -112,7 +120,7 @@ class client :
             client._listen_socket.listen(1)
             client._listen_thread = threading.Thread(target=client.handle_requests)
             client._listen_thread.start()
-            client._socket.sendall(f"CONNECT {user} {listen_ip} {listen_port}\0".encode())
+            client._socket.sendall(f"CONNECT {time} {user} {listen_ip} {listen_port}\0".encode())
             response = client._socket.recv(1024).decode()
             if response == '0':
                 print("c > CONNECT OK")
@@ -133,10 +141,11 @@ class client :
             client._socket.close()
     @staticmethod
     def disconnect(user):
+        time = client.time()
         try:
             client._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             client._socket.connect((client._server, client._port))
-            client._socket.sendall(f"DISCONNECT {user}\0".encode())
+            client._socket.sendall(f"DISCONNECT {time} {user}\0".encode())
             response = client._socket.recv(1024).decode()
             if response == '0':
                 client._user = None
@@ -163,10 +172,11 @@ class client :
             client._socket.close()
     @staticmethod
     def publish(fileName, description):
+        time = client.time()
         try:
             client._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             client._socket.connect((client._server, client._port))
-            client._socket.sendall(f"PUBLISH {client._user} {fileName} {description}\0".encode())
+            client._socket.sendall(f"PUBLISH {time} {client._user} {fileName} {description}\0".encode())
             response = client._socket.recv(1024).decode()
             if response == '0':
                 print("c > PUBLISH OK")
@@ -191,10 +201,11 @@ class client :
             client._socket.close()
     @staticmethod
     def delete(fileName):
+        time = client.time()
         try:
             client._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             client._socket.connect((client._server, client._port))
-            client._socket.sendall(f"DELETE {client._user} {fileName}\0".encode())
+            client._socket.sendall(f"DELETE {time} {client._user} {fileName}\0".encode())
             response = client._socket.recv(1024).decode()
             if response == '0':
                 print("c > DELETE OK")
@@ -218,10 +229,11 @@ class client :
             client._socket.close()
     @staticmethod
     def listusers():
+        time = client.time()
         try:
             client._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             client._socket.connect((client._server, client._port))
-            client._socket.sendall(f"LIST_USERS {client._user}\0".encode())
+            client._socket.sendall(f"LIST_USERS {time} {client._user}\0".encode())
             response = client._socket.recv(1024).decode()
             if response[0] == '0':
                 num_users = int(response[1])
@@ -250,10 +262,11 @@ class client :
             client._socket.close()
     @staticmethod
     def listcontent(user):
+        time = client.time()
         try:
             client._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             client._socket.connect((client._server, client._port))
-            client._socket.sendall(f"LIST_CONTENT {user} {client._user}\0".encode())
+            client._socket.sendall(f"LIST_CONTENT {time} {user} {client._user}\0".encode())
             response = client._socket.recv(2048).decode()
             if response[0] == '0':
                 response = response[1:]
@@ -290,14 +303,14 @@ class client :
 
     @staticmethod
     def getfile(user, remote_file_name, local_file_name):
+        time = client.time()
         try:
             client._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             client._socket.connect((client._server, client._port))  
-            client._socket.sendall(f"GET_FILE {user} {remote_file_name}\0".encode())
+            client._socket.sendall(f"GET_FILE {time} {user} {remote_file_name}\0".encode())
             response = client._socket.recv(1024).decode()
             if response[0] == '0':
                 print("c > GET_FILE OK")
-                print(response)
                 # crear una conexión con el otro cliente
                 response = response.split(' ')
                 file_ip = response[1]
@@ -308,7 +321,6 @@ class client :
                 with open(f"{client._user}/{local_file_name}", 'w') as file:
                     while True:
                         data = file_socket.recv(1024).decode()
-                        print(data)
                         if not data:
                             break
                         file.write(data)

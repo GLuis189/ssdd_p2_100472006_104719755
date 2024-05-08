@@ -1,7 +1,1 @@
-aa prueba.txt archivo de prueba 
-aa prueba2.txt otra prueba 
-hola hola.txt hola que tal 
-aa otro.exe otro archivo 
-nacho archivo.txt descriptcion del archivo 
-pedro 1.txt hola hola adios
-pedro 2.txt hola hola hola 
+casa a.txt Es uan archivo de prueba 

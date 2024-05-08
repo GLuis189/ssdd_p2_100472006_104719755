@@ -83,6 +83,10 @@ void unregister_user(int s_local, char* user)
             fclose(f3);
             remove("users.txt");
             rename("users2.txt", "users.txt");
+
+            // eliminar las entradas de publish_contents.txt que ha publicado el usuario que hace el unregister
+
+
             close(s_local);
             return;
         }
@@ -632,7 +636,10 @@ void tratar_peticion(void *sockfd)
     }
 
     char *op = strtok(buffer, " ");
-    printf("s> OPERATION %s\n", op);
+    char *fecha = strtok(NULL, " ");
+    char *hora = strtok(NULL, " ");
+    
+    printf("s> OPERATION %s TIME: %s %s \n", op, fecha, hora);
     
     if (op && strcmp(op, "REGISTER") == 0){ //REGISTER
         char *user = strtok(NULL, " ");
