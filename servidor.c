@@ -17,14 +17,18 @@ pthread_mutex_t mutex;
 pthread_cond_t cond;
 int mensaje_no_copiado = 1;
 
+pthread_mutex_t file_mutex;
+
 void register_user(int s_local, char* user)
 {
     printf("s> OPERATION REGISTER FROM %s\n",user);
     FILE *f;
+    pthread_mutex_lock(&file_mutex); 
     f = fopen("users.txt", "r");
     if (f == NULL)
     {
         printf("Error opening file!\n");
+        pthread_mutex_unlock(&file_mutex); 
         exit(1);
     }
     // Comprueba si el usuario ya está registrado
@@ -36,6 +40,7 @@ void register_user(int s_local, char* user)
             // El usuario ya está registrado, envía '1' al cliente
             send(s_local, "1", 1, 0);
             fclose(f);
+            pthread_mutex_unlock(&file_mutex); 
             return;
         }
     }
@@ -46,6 +51,7 @@ void register_user(int s_local, char* user)
     fprintf(f, "%s\n", user);
     send(s_local, "0", 1, 0);
     fclose(f);
+    pthread_mutex_unlock(&file_mutex); 
     close(s_local);
     return;
 }
@@ -54,10 +60,12 @@ void unregister_user(int s_local, char* user)
 {
     printf("s> OPERATION UNREGISTER FROM %s\n",user);
     FILE *f;
+    pthread_mutex_lock(&file_mutex); 
     f = fopen("users.txt", "r");
     if (f == NULL)
     {
         printf("Error opening file!\n");
+        pthread_mutex_unlock(&file_mutex); 
         exit(1);
     }
     // Comprueba si el usuario ya está registrado, si es así lo borra
@@ -108,10 +116,8 @@ void unregister_user(int s_local, char* user)
             fclose(f5);
             remove("published_contents.txt");
             rename("published_contents2.txt", "published_contents.txt");
-            
-            
 
-
+            pthread_mutex_unlock(&file_mutex); 
             close(s_local);
             return;
         }
@@ -122,10 +128,12 @@ void connect_user(int s_local, char* user, char* ip, char* port)
 {
     printf("s> OPERATION CONNECT FROM %s\n",user);
     FILE *f;
+    pthread_mutex_lock(&file_mutex); 
     f = fopen("users.txt", "r");
     if (f == NULL)
     {
         printf("Error opening file!\n");
+        pthread_mutex_unlock(&file_mutex); 
         exit(1);
     }
     // Comprueba si el usuario ya está registrado
@@ -146,6 +154,7 @@ void connect_user(int s_local, char* user, char* ip, char* port)
                         // El usuario ya está conectado, envía '2' al cliente
                         send(s_local, "2", 1, 0);
                         fclose(f);
+                        pthread_mutex_unlock(&file_mutex); 
                         return;
                     }
                 }
@@ -157,6 +166,7 @@ void connect_user(int s_local, char* user, char* ip, char* port)
             fprintf(f, "%s %s %s \n", user, ip, port);
             send(s_local, "0", 1, 0);
             fclose(f);
+            pthread_mutex_unlock(&file_mutex); 
             return;
         }
     }
@@ -164,6 +174,7 @@ void connect_user(int s_local, char* user, char* ip, char* port)
 
     // El usuario no está registrado, envía '1' al cliente
     send(s_local, "1", 1, 0);
+    pthread_mutex_unlock(&file_mutex); 
     close(s_local);
     return;
 }
@@ -172,10 +183,12 @@ void publish_content(int s_local, char* user, char* filename, char* description)
 {
     printf("s> OPERATION PUBLISH\n");
     FILE *f;
+    pthread_mutex_lock(&file_mutex); 
     f = fopen("connected_users.txt", "r");
     if (f == NULL)
     {
         printf("Error opening file!\n");
+        pthread_mutex_unlock(&file_mutex); 
         exit(1);
     }
 
@@ -195,6 +208,7 @@ void publish_content(int s_local, char* user, char* filename, char* description)
         if (!user_exists) {
             // El usuario no está registrado, envía '1' al cliente
             send(s_local, "1", 1, 0);
+            pthread_mutex_unlock(&file_mutex); 
             close(s_local);
             return;
         }
@@ -217,6 +231,7 @@ void publish_content(int s_local, char* user, char* filename, char* description)
         if (!user_connected) {
             // El usuario no está conectado, envía '2' al cliente
             send(s_local, "2", 1, 0);
+            pthread_mutex_unlock(&file_mutex); 
             close(s_local);
             return;
         }
@@ -233,6 +248,7 @@ void publish_content(int s_local, char* user, char* filename, char* description)
                 // El contenido ya está publicado, envía '3' al cliente
                 send(s_local, "3", 1, 0);
                 fclose(f);
+                pthread_mutex_unlock(&file_mutex); 
                 close(s_local);
                 return;
             }
@@ -245,6 +261,7 @@ void publish_content(int s_local, char* user, char* filename, char* description)
     fprintf(f, "%s %s %s \n", user, filename, description);
     send(s_local, "0", 1, 0);
     fclose(f);
+    pthread_mutex_unlock(&file_mutex); 
     close(s_local);
     return;
 }
@@ -252,6 +269,7 @@ void publish_content(int s_local, char* user, char* filename, char* description)
 void delete_content(int s_local, char* user, char* filename)
 {
     printf("s> OPERATION DELETE\n");
+    pthread_mutex_lock(&file_mutex); 
     FILE *f, *temp;
     char line[256];
     bool file_exists = false;
@@ -271,6 +289,7 @@ void delete_content(int s_local, char* user, char* filename)
         if (!user_exists) {
             // El usuario no está registrado, envía '1' al cliente
             send(s_local, "1", 1, 0);
+            pthread_mutex_unlock(&file_mutex); 
             close(s_local);
             return;
         }
@@ -292,6 +311,7 @@ void delete_content(int s_local, char* user, char* filename)
         if (!user_connected) {
             // El usuario no está conectado, envía '2' al cliente
             send(s_local, "2", 1, 0);
+            pthread_mutex_unlock(&file_mutex); 
             close(s_local);
             return;
         }
@@ -321,17 +341,20 @@ void delete_content(int s_local, char* user, char* filename)
         if (!file_exists) {
             // El contenido no está publicado, envía '3' al cliente
             send(s_local, "3", 1, 0);
+            pthread_mutex_unlock(&file_mutex); 
             close(s_local);
             return;
         }
     } else {
         // Error al abrir el archivo
         printf("Error opening file!\n");
+        pthread_mutex_unlock(&file_mutex); 
         exit(1);
     }
 
     // Elimina el contenido y envía '0' al cliente
     send(s_local, "0", 1, 0);
+    pthread_mutex_unlock(&file_mutex); 
     close(s_local);
     return;
 }
@@ -340,10 +363,12 @@ void list_users(int s_local, char* user)
 {
     printf("s> OPERATION LIST_USERS\n");
     FILE *f;
+    pthread_mutex_lock(&file_mutex); 
     f = fopen("users.txt", "r");
     if (f == NULL)
     {
         printf("Error opening file!\n");
+        pthread_mutex_unlock(&file_mutex); 
         exit(1);
     }
     // Comprueba si el usuario ya está registrado
@@ -361,6 +386,7 @@ void list_users(int s_local, char* user)
     if (!user_exists) {
         // El usuario no está registrado, envía '1' al cliente
         send(s_local, "1", 1, 0);
+        pthread_mutex_unlock(&file_mutex); 
         close(s_local);
         return;
     }
@@ -381,6 +407,7 @@ void list_users(int s_local, char* user)
         if (!user_connected) {
             // El usuario no está conectado, envía '2' al cliente
             send(s_local, "2", 1, 0);
+            pthread_mutex_unlock(&file_mutex); 
             close(s_local);
             return;
         }
@@ -407,6 +434,7 @@ void list_users(int s_local, char* user)
         fclose(f);
         send(s_local, message, strlen(message) + 1, 0);
     }
+    pthread_mutex_unlock(&file_mutex); 
     close(s_local);
     return;
 
@@ -415,10 +443,12 @@ void list_users(int s_local, char* user)
 void list_content(int s_local, char* user, char* target_user) {
     printf("s> OPERATION LIST_CONTENT\n");
     FILE *f;
+    pthread_mutex_lock(&file_mutex); 
     f = fopen("users.txt", "r");
     if (f == NULL)
     {
         printf("Error opening file!\n");
+        pthread_mutex_unlock(&file_mutex); 
         exit(1);
     }
     // Comprueba si el usuario ya está registrado
@@ -436,6 +466,7 @@ void list_content(int s_local, char* user, char* target_user) {
     if (!user_exists) {
         // El usuario no está registrado, envía '1' al cliente
         send(s_local, "1", 1, 0);
+        pthread_mutex_unlock(&file_mutex); 
         close(s_local);
         return;
     }
@@ -456,6 +487,7 @@ void list_content(int s_local, char* user, char* target_user) {
         if (!user_connected) {
             // El usuario no está conectado, envía '2' al cliente
             send(s_local, "2", 1, 0);
+            pthread_mutex_unlock(&file_mutex); 
             close(s_local);
             return;
         }
@@ -484,10 +516,8 @@ void list_content(int s_local, char* user, char* target_user) {
         }    
         fclose(f);
         send(s_local, message, strlen(message) + 1, 0);
-        printf("envia \n");
-        fflush(stdout);
     }
-    printf("FIN\n");
+    pthread_mutex_unlock(&file_mutex); 
     close(s_local);
     return;
 
@@ -497,6 +527,7 @@ void list_content(int s_local, char* user, char* target_user) {
 void disconnect_user(int s_local, char* user)
 {
     printf("s> OPERATION DISCONNECT FROM %s\n",user);
+    pthread_mutex_lock(&file_mutex); 
     FILE *f, *temp;
     char line[256];
     bool user_exists = false;
@@ -527,29 +558,35 @@ void disconnect_user(int s_local, char* user)
         if (!user_exists) {
             // El usuario no está conectado, envía '1' al cliente
             send(s_local, "1", 1, 0);
+            pthread_mutex_unlock(&file_mutex); 
             close(s_local);
             return;
         } else {
             // El usuario está conectado, envía '0' al cliente
             send(s_local, "0", 1, 0);
+            pthread_mutex_unlock(&file_mutex); 
             close(s_local);
             return;
         }
     } else {
         // Error al abrir el archivo
         printf("Error opening file!\n");
+        pthread_mutex_unlock(&file_mutex); 
         exit(1);
     }
+    pthread_mutex_unlock(&file_mutex); 
 }
 
 void get_file(int s_local, char* user, char* r_file){
     printf("s> OPERATION GET_FILE FROM %s\n",user);
 
     FILE *f;
+    pthread_mutex_lock(&file_mutex); 
     f = fopen("users.txt", "r");
     if (f == NULL)
     {
         printf("Error opening file!\n");
+        pthread_mutex_unlock(&file_mutex); 
         exit(1);
     }
     // Comprueba si el usuario ya está registrado
@@ -567,6 +604,7 @@ void get_file(int s_local, char* user, char* r_file){
     if (!user_exists) {
         // El usuario no está registrado, envía '1' al cliente
         send(s_local, "1", 1, 0);
+        pthread_mutex_unlock(&file_mutex); 
         close(s_local);
         return;
     }
@@ -589,12 +627,14 @@ void get_file(int s_local, char* user, char* r_file){
         if (!file_exists) {
             // El archivo no está publicado por el usuario, envía '2' al cliente
             send(s_local, "2", 1, 0);
+            pthread_mutex_unlock(&file_mutex); 
             close(s_local);
             return;
         }
     } else {
         // Error al abrir el archivo
         printf("Error opening file!\n");
+        pthread_mutex_unlock(&file_mutex); 
         exit(1);
     }
 
@@ -616,6 +656,7 @@ void get_file(int s_local, char* user, char* r_file){
                 strcat(message, port);
                 send(s_local, message, strlen(message) + 1, 0);
                 fclose(f);
+                pthread_mutex_unlock(&file_mutex); 
                 close(s_local);
                 return;
             }
@@ -624,15 +665,17 @@ void get_file(int s_local, char* user, char* r_file){
         if (!user_connected) {
             // El usuario no está conectado, envía '2' al cliente
             send(s_local, "2", 1, 0);
+            pthread_mutex_unlock(&file_mutex); 
             close(s_local);
             return;
         }
     } else {
         // Error al abrir el archivo
         printf("Error opening file!\n");
+        pthread_mutex_unlock(&file_mutex); 
         exit(1);
     }
-
+    pthread_mutex_unlock(&file_mutex); 
     return NULL;
 }
 
@@ -672,14 +715,9 @@ void tratar_peticion(void *sockfd)
 
     char *user = strtok(NULL, " ");
     printf("s> USER %s\n", user);
-
-    printf("1");
-            fflush(stdout);
     
     CLIENT *clnt;
     enum clnt_stat retval;
-    printf("2");
-            fflush(stdout);
 
     char *host = "localhost";
 
@@ -688,14 +726,10 @@ void tratar_peticion(void *sockfd)
         clnt_pcreateerror(host);
         exit(1);
     }
-    printf("3");
-            fflush(stdout);
 
     if (op && strcmp(op, "REGISTER") == 0){ //REGISTER
         if (user) {
             retval = imprimir_nf_1(op, fecha, hora, user, &n, clnt);
-            printf("4");
-            fflush(stdout);
             if (retval != RPC_SUCCESS) {
                 clnt_perror(clnt, "call failed");
             }
@@ -717,7 +751,6 @@ void tratar_peticion(void *sockfd)
     }
     else if (op && strcmp(op, "CONNECT") == 0){ //CONNECT
         retval = imprimir_nf_1(op, fecha, hora, user, &n, clnt);
-        printf("4");
         if (retval != RPC_SUCCESS) {
             clnt_perror(clnt, "call failed");
         }
@@ -795,14 +828,17 @@ void tratar_peticion(void *sockfd)
         }
     }
     else if (op && strcmp(op, "GET_FILE") == 0){ //GET_FILE
-        retval = imprimir_nf_1(op, fecha, hora, user, &n, clnt);
         if (retval != RPC_SUCCESS) {
             clnt_perror(clnt, "call failed");
         }
+        char *target = strtok(NULL, " ");
+        printf("s> TARGET %s\n", target);
         char *r_file = strtok(NULL, " ");
         printf("s> FILE %s\n", r_file);
+        retval = imprimir_f_1(op, fecha, hora, user, r_file, &n, clnt);
+
         if (user) {
-            get_file(s_local, user, r_file);
+            get_file(s_local, target, r_file);
         } else {
             printf("No user provided\n");
         }

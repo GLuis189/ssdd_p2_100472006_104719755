@@ -307,7 +307,7 @@ class client :
         try:
             client._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             client._socket.connect((client._server, client._port))  
-            client._socket.sendall(f"GET_FILE {time} {user} {remote_file_name}\0".encode())
+            client._socket.sendall(f"GET_FILE {time} {client._user} {user} {remote_file_name}\0".encode())
             response = client._socket.recv(1024).decode()
             if response[0] == '0':
                 print("c > GET_FILE OK")
