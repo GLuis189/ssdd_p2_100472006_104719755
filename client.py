@@ -153,7 +153,6 @@ class client :
                     client.HILO = False
                 print("c > DISCONNECT OK")
                 client._listen_thread.join()  # stop the listening thread
-                print("c > STOPPED LISTENING")
                 client._listen_socket.close()  # close the listening socket
                 return client.RC.OK
             elif response == '1':
