@@ -13,9 +13,9 @@
 #include <rpc/rpc.h>
 
 
-pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-int busy = true;
-pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
+pthread_mutex_t mutex;
+pthread_cond_t cond;
+int mensaje_no_copiado = 1;
 
 void register_user(int s_local, char* user)
 {
@@ -642,15 +642,18 @@ void tratar_peticion(void *sockfd)
 {
     int *sockfd_int = (int *)sockfd;
     int err;
-    int s_local;
+
     int n;
     
     char buffer[1024];
 
+    int s_local;
     pthread_mutex_lock(&mutex);
-    s_local = (*sockfd_int);
-    busy = false;
+    s_local = (* (int *)sockfd);
+    mensaje_no_copiado = 0;
+
     pthread_cond_signal(&cond);
+
     pthread_mutex_unlock(&mutex);
     
     err = recv(s_local, buffer, 1024, 0); 
@@ -714,6 +717,7 @@ void tratar_peticion(void *sockfd)
     }
     else if (op && strcmp(op, "CONNECT") == 0){ //CONNECT
         retval = imprimir_nf_1(op, fecha, hora, user, &n, clnt);
+        printf("4");
         if (retval != RPC_SUCCESS) {
             clnt_perror(clnt, "call failed");
         }
@@ -880,17 +884,19 @@ int main(int argc, char *argv[])
             return -1;
         }
 
-        pthread_create(&thid, &attr, tratar_peticion, (void *)&sc);
         printf("s> new connection from %s\n", inet_ntoa(client_addr.sin_addr));
 
-        /*while (busy)
-        {
-            printf("bloqueado\n");
-            pthread_cond_wait(&cond, &mutex);
-            busy = true;
+        if(pthread_create(&thid, &attr, (void *)tratar_peticion, (int *) &sc) == 0){
+            pthread_mutex_lock(&mutex);
+            while (mensaje_no_copiado)
+                pthread_cond_wait(&cond, &mutex);
+            mensaje_no_copiado = 1;
             pthread_mutex_unlock(&mutex);
-            printf("desbloqueado\n");
-        }*/
+        }
+        else{
+            perror("s > error creación de hilo");
+            return -1;
+        }
     }
     
     close(sd);
