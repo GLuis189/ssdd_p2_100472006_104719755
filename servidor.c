@@ -121,6 +121,14 @@ void unregister_user(int s_local, char* user)
             close(s_local);
             return;
         }
+        else{
+            // El usuario no está registrado, envía '1' al cliente
+            send(s_local, "1", 1, 0);
+            fclose(f);
+            pthread_mutex_unlock(&file_mutex); 
+            close(s_local);
+            return;
+        }   
     }
     
 }
@@ -676,7 +684,7 @@ void get_file(int s_local, char* user, char* r_file){
         exit(1);
     }
     pthread_mutex_unlock(&file_mutex); 
-    return NULL;
+    return;
 }
 
 
@@ -704,14 +712,13 @@ void tratar_peticion(void *sockfd)
     {
         printf("Error in reception\n");
         close(s_local);
-        return NULL;
+        return;
     }
 
     char *op = strtok(buffer, " ");
     char *fecha = strtok(NULL, " ");
     char *hora = strtok(NULL, " ");
     
-    // printf("s> OPERATION %s TIME: %s %s \n", op, fecha, hora);
 
     char *user = strtok(NULL, " ");
     printf("s> USER %s\n", user);
@@ -719,7 +726,7 @@ void tratar_peticion(void *sockfd)
     CLIENT *clnt;
     enum clnt_stat retval;
 
-    char *host = "localhost";
+    char *host = getenv("IMPRIMIR_SERVER");
 
     clnt = clnt_create(host, IMPRIMIR, IMPRIMIR_V1, "tcp");
     if (clnt == NULL) {

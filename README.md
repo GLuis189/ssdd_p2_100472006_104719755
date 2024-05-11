@@ -16,6 +16,9 @@ Para ejecutar el servidor RPC:
     ./imprimir_server
 
 Para ejecutar el servidor:
+Primero declarar una variable de entorno con la ip del servidor rpc: 
+    export IMPRIMIR_SERVER=localhost
+Ejecutar el servidor:
     ./servidor -p 8080
 
 Para ejecutar el cliente, se puede ejecutar varios clientes en terminales diferentes:
