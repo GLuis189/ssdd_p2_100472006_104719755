@@ -37,8 +37,10 @@ class client :
             with client._hilo_lock:
                 if not client.HILO:
                     break
+            
             try:
-                conn, addr = client._listen_socket.accept()
+                if client._listen_socket.fileno() != -1:  # Verifica si el socket está abierto
+                    conn, addr = client._listen_socket.accept()
                 # maneja la solicitud aquí
                 data = conn.recv(1024).decode()
                 data = data.split(' ')
@@ -153,6 +155,7 @@ class client :
                     client.HILO = False
                 print("c > DISCONNECT OK")
                 client._listen_thread.join()  # para el hilo de escucha
+                
                 client._listen_socket.close()  # cierra el socket de escucha
                 return client.RC.OK
             elif response == '1':

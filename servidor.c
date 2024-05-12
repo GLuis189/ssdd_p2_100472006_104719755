@@ -252,7 +252,8 @@ void publish_content(int s_local, char* user, char* filename, char* description)
         char line[256];
         while (fgets(line, sizeof(line), f)) {
             line[strcspn(line, "\n")] = 0;
-            char* published_filename = strtok(line, " ");
+            strtok(line, " ");
+            char* published_filename = strtok(NULL, " ");
             if (strcmp(published_filename, filename) == 0) {
                 // El contenido ya está publicado, envía '3' al cliente
                 send(s_local, "3", 1, 0);
@@ -460,21 +461,31 @@ void list_content(int s_local, char* user, char* target_user) {
         pthread_mutex_unlock(&file_mutex); 
         exit(1);
     }
-    // Comprueba si el usuario ya está registrado
+        // Comprueba si el usuario ya está registrado
     char line[256];
     bool user_exists = false;
+    bool target_user_exists = false;
     while (fgets(line, sizeof(line), f)) {
         // Elimina el salto de línea al final de la línea
         line[strcspn(line, "\n")] = 0;
         if (strcmp(line, user) == 0) {
             user_exists = true;
-            break;
+        }
+        if (strcmp(line, target_user) == 0) {
+            target_user_exists = true;
         }
     }
     fclose(f);
     if (!user_exists) {
         // El usuario no está registrado, envía '1' al cliente
         send(s_local, "1", 1, 0);
+        pthread_mutex_unlock(&file_mutex); 
+        close(s_local);
+        return;
+    }
+    if (!target_user_exists) {
+        // El target_user no existe, envía '3' al cliente
+        send(s_local, "3", 1, 0);
         pthread_mutex_unlock(&file_mutex); 
         close(s_local);
         return;
@@ -501,7 +512,7 @@ void list_content(int s_local, char* user, char* target_user) {
             return;
         }
     }
-
+ 
     // Lista los ficheros del usuario y envía '0' al cliente
     f = fopen("published_contents.txt", "r");
     if (f != NULL) {
@@ -540,6 +551,31 @@ void disconnect_user(int s_local, char* user)
     FILE *f, *temp;
     char line[256];
     bool user_exists = false;
+    bool user_connected = false;
+    // Comprueba si el usuario está en users.txt
+    f = fopen("users.txt", "r");
+    if (f != NULL) {
+        while (fgets(line, sizeof(line), f)) {
+            line[strcspn(line, "\n")] = 0;  // Elimina el salto de línea al final de la línea
+            if (strcmp(line, user) == 0) {
+                user_exists = true;
+                break;
+            }
+        }
+        fclose(f);
+    } else {
+        printf("Error opening file!\n");
+        pthread_mutex_unlock(&file_mutex); 
+        exit(1);
+    }
+
+    if (!user_exists) {
+        // El usuario no existe, envía '1' al cliente
+        send(s_local, "1", 1, 0);
+        pthread_mutex_unlock(&file_mutex); 
+        close(s_local);
+        return;
+    }
 
     // Comprueba si el usuario está conectado
     f = fopen("connected_users.txt", "r");
@@ -553,7 +589,7 @@ void disconnect_user(int s_local, char* user)
             char* connected_user = strtok(temp_line, " ");
             if (strcmp(connected_user, user) == 0) {
                 // El usuario está conectado, no lo escribas en el archivo temporal
-                user_exists = true;
+                user_connected = true;
             } else {
                 // Escribe la línea en el archivo temporal
                 fprintf(temp, "%s", line);
@@ -564,9 +600,9 @@ void disconnect_user(int s_local, char* user)
         // Elimina el archivo original y renombra el archivo temporal
         remove("connected_users.txt");
         rename("temp.txt", "connected_users.txt");
-        if (!user_exists) {
+        if (!user_connected) {
             // El usuario no está conectado, envía '1' al cliente
-            send(s_local, "1", 1, 0);
+            send(s_local, "2", 1, 0);
             pthread_mutex_unlock(&file_mutex); 
             close(s_local);
             return;
