@@ -109,6 +109,9 @@ class client :
             
     @staticmethod
     def connect(user):
+        if client._user is not None:
+            print("c > USER ALREADY CONNECTED")
+            return client.RC.USER_ERROR
         time = client.time()
         try:
             client._user = user
@@ -143,6 +146,9 @@ class client :
             client._socket.close()
     @staticmethod
     def disconnect(user):
+        if client._user is None:
+            print("c > DISCONNECT FAIL, USER NOT CONNECTED")
+            return client.RC.USER_ERROR
         time = client.time()
         try:
             client._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
