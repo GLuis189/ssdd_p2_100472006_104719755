@@ -501,7 +501,7 @@ void list_content(int s_local, char* user, char* target_user) {
             return;
         }
     }
-    printf("AQUI\n");
+
     // Lista los ficheros del usuario y envía '0' al cliente
     f = fopen("published_contents.txt", "r");
     if (f != NULL) {
