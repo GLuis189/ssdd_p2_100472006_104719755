@@ -1,0 +1,50 @@
+Para las pruebsas, estas se realizarán con el servidor RPC y el servidor en ejecución,
+ya que no hay que realizar ninguna acción por el usuairo en estos dos sistemas y por lo tanto no requieren ninguna prueba.
+Por lo tanto, cuando se estén ejecutando ambos servidores, las pruebas se realizarán con los clientes:
+
+1ª prueba
+    La primera prueba consistirá en realizar una ejecución normal. Un usuario se registrará, se conectará y posteriormente intentará obtener el archivo de otro usuario.
+    Para ello, se debe ejecutar lo siguiente en la shell del cliente (T1 significa la terminal 1 y T2 la terminal 2):
+
+    T1.1- REGISTER user1
+    T1.2- CONNECT user1
+
+    Ahora abriremos otra terminal con otro usuario en la que publicaremos dos archivos y que el user1 pueda obtenerlo
+
+    T2.1- REGISTER user2
+    T2.2- CONNECT user2 
+    T2.3- PUBLISH prueba.txt archivo de prueba 1
+    T2.4- PUBLISH prueba2.txt archivo de prueba 2
+
+    En el archivo prueba.txt se puede escribir algún contenido para ver como posteriormente el otro usuario tendrá en su archivo dicho contenido.
+    Ahora en la terminal del primer usuario obtendremos los usuarios conectados y el contenido publicado de user2
+
+    T1.3- LIST_USERS
+            user1 127.0.0.1 38357
+            user2 127.0.0.1 52039
+
+    T1.4- LIST_CONTENT user2
+            prueba.txt "archivo de prueba1"
+            prueba2.txt "archivo de prueba2 "
+    
+    T1.5- GET_FILE user2 prueba.txt miprueba.txt
+
+    Como podemos ver, ahora el user1 en su carpeta personal tiene el archivo miprueba.txt con el contenido de prueba.txt.
+    Ahora el user2 eliminará el archivo.
+
+    T2.5- DELETE prueba.txt
+    T2.6- LIST_CONTENT user2
+            prueba2.txt "archivo de prueba2 "
+
+    Se puede ver que ya no existe el archivo que se ha eliminado 
+    Ahora se pueden desconectar ambos usuarios
+
+    T1.6- DISCONNECT user1
+    T2.7- DISCONNECT user2
+
+    Ambos usuarios desaparecen del archivo connected_users y al hacer list_users ya no aparecen
+    Ahora realizaremos unregister de alguno de ellos para que desaparezca
+
+    T2.8- UNREGISTER user2
+
+    Se puede observar que ahora user2 no está en el fichero de users.txt y su carpeta personal se ha eliminado

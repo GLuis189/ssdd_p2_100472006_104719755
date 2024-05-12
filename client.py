@@ -208,6 +208,7 @@ class client :
             response = client._socket.recv(1024).decode()
             if response == '0':
                 print("c > DELETE OK")
+                os.remove(f"{client._user}/{fileName}")
                 return client.RC.OK
             elif response == '1':
                 print("c > DELETE FAIL, USER DOES NOT EXIST")
