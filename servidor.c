@@ -70,10 +70,12 @@ void unregister_user(int s_local, char* user)
     }
     // Comprueba si el usuario ya está registrado, si es así lo borra
     char line[256];
+    int isRegistered = 0;  // Variable para rastrear si el usuario está registrado
     while (fgets(line, sizeof(line), f)) {
         // Elimina el salto de línea al final de la línea
         line[strcspn(line, "\n")] = 0;
         if (strcmp(line, user) == 0) {
+            isRegistered = 1;  // El usuario está registrado
             // El usuario ya está registrado, envía '0' al cliente
             send(s_local, "0", 1, 0);
             fclose(f);
@@ -121,17 +123,16 @@ void unregister_user(int s_local, char* user)
             close(s_local);
             return;
         }
-        else{
-            // El usuario no está registrado, envía '1' al cliente
-            send(s_local, "1", 1, 0);
-            fclose(f);
-            pthread_mutex_unlock(&file_mutex); 
-            close(s_local);
-            return;
-        }   
     }
-    
+    fclose(f);
+    if (!isRegistered) {  // Si el usuario no está registrado
+        send(s_local, "1", 1, 0);  // Envía '1' al cliente
+    }
+    pthread_mutex_unlock(&file_mutex); 
+    close(s_local);
+    return;
 }
+
 void connect_user(int s_local, char* user, char* ip, char* port)
 {
     printf("s> OPERATION CONNECT FROM %s\n",user);
